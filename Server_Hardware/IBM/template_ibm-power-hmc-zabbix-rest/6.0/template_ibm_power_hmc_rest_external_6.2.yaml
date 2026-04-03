@@ -1,0 +1,138 @@
+zabbix_export:
+  version: '6.2'
+  date: '2026-04-02T14:10:00Z'
+
+  templates:
+    - uuid: 9f3a6c4b1e2d4f84a9b3c6d1e2f4a8b7
+      template: IBM_Power_HMC_REST_External
+      name: "IBM Power HMC by REST (External)"
+      description: |
+        IBM Power HMC monitoring via REST (UOM) and PCM EnergyMonitor.
+
+        Includes:
+        - Managed System discovery + state
+        - LPAR discovery + state
+        - VIOS discovery + state
+        - VIOS redundancy via trigger logic
+        - PCM inlet temperature
+        - PCM CPU temperature
+        - PCM power consumption (Watts)
+
+      groups:
+        - name: Templates
+
+      macros:
+        - macro: '{$HMC.USER}'
+          value: zabbixapi
+        - macro: '{$HMC.PASSWORD}'
+          value: ''
+
+      items:
+        - uuid: a1b2c3d44e5f4a8b9c1d2e3f4a5b6c7d
+          name: "HMC REST availability"
+          type: EXTERNAL
+          key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},hmc.ping]
+          delay: 5m
+          history: 7d
+          value_type: UNSIGNED
+
+      discovery_rules:
+        # ---------------- Managed Systems ----------------
+        - uuid: b2c3d4e55f6a4b8c9d1e2f3a4b5c6d7e
+          name: "HMC REST: Managed Systems discovery"
+          type: EXTERNAL
+          key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},discover.systems]
+          delay: 1h
+
+          item_prototypes:
+            - uuid: c3d4e5f66a7b4c8d9e1f2a3b4c5d6e7f
+              name: "HMC REST: System {#MS_NAME} state"
+              type: EXTERNAL
+              key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.state,{#MS_NAME}]
+              delay: 5m
+              value_type: TEXT
+
+            - uuid: d4e5f6a77b8c4d9e8a1b2c3d4e5f6a7b
+              name: "HMC PCM: Inlet temperature {#MS_NAME}"
+              type: EXTERNAL
+              key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.temp.inlet,{#MS_NAME}]
+              delay: 5m
+              value_type: FLOAT
+              units: "°C"
+
+            - uuid: e5f6a7b88c9d4e8f9a1b2c3d4e5f6a7b
+              name: "HMC PCM: CPU temperature {#MS_NAME}"
+              type: EXTERNAL
+              key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.temp.cpu,{#MS_NAME}]
+              delay: 5m
+              value_type: FLOAT
+              units: "°C"
+
+            - uuid: f6a7b8c99d0e4f8a9b1c2d3e4f5a6b7c
+              name: "HMC PCM: Power consumption {#MS_NAME}"
+              type: EXTERNAL
+              key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.power.watts,{#MS_NAME}]
+              delay: 5m
+              value_type: FLOAT
+              units: "W"
+            - uuid: 8f3c2a74-9e4a-4d9a-b6d2-3c1e9c4f7a21
+              name: "HMC PCM: Baseboard temperature {#MS_NAME}"
+              type: EXTERNAL
+              key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.temp.baseboard,{#MS_NAME}]
+              delay: 5m
+              value_type: FLOAT
+              units: "°C"
+          trigger_prototypes:
+            - uuid: a7b8c9d00e1f4a8b9c1d2e3f4a5b6c7d
+              name: "HMC REST: System {#MS_NAME} not Operating"
+              expression: last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.state,{#MS_NAME}])<>"Operating"
+                          and last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.state,{#MS_NAME}])<>"unknown"
+              priority: HIGH
+            - uuid: 1a6c9d30-2f1a-4c78-9b55-6c7a8e0f4b91
+              name: "HMC PCM: High baseboard temperature on {#MS_NAME}"
+              expression: last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.temp.baseboard,{#MS_NAME}])>60
+              priority: WARNING
+
+        # ---------------- LPARs ----------------
+        - uuid: b8c9d0e11f2a4b8c9d1e2f3a4b5c6d7e
+          name: "HMC REST: LPAR discovery"
+          type: EXTERNAL
+          key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},discover.lpars]
+          delay: 1h
+
+          item_prototypes:
+            - uuid: c9d0e1f22a3b4c8d9e1f2a3b4c5d6e7f
+              name: "HMC REST: LPAR {#LPAR_NAME} state"
+              type: EXTERNAL
+              key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},lpar.state,{#LPAR_NAME}]
+              delay: 5m
+              value_type: TEXT
+
+          trigger_prototypes:
+            - uuid: d0e1f2a33b4c4d8e9f1a2b3c4d5e6f7a
+              name: "HMC REST: LPAR {#LPAR_NAME} not Running"
+              expression: last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},lpar.state,{#LPAR_NAME}])<>"Running"
+                          and last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},lpar.state,{#LPAR_NAME}])<>"unknown"
+              priority: WARNING
+
+        # ---------------- VIOS ----------------
+        - uuid: e1f2a3b44c5d4e8f9a1b2c3d4e5f6a7b
+          name: "HMC REST: VIOS discovery"
+          type: EXTERNAL
+          key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},discover.vios]
+          delay: 1h
+
+          item_prototypes:
+            - uuid: f2a3b4c55d6e4a8b9c1d2e3f4a5b6c7d
+              name: "HMC REST: VIOS {#VIOS_NAME} state"
+              type: EXTERNAL
+              key: hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},lpar.state,{#VIOS_NAME}]
+              delay: 5m
+              value_type: TEXT
+
+          trigger_prototypes:
+            - uuid: a3b4c5d66e7f4a8b9c1d2e3f4a5b6c7d
+              name: "HMC REST: VIOS {#VIOS_NAME} not Running"
+              expression: last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},lpar.state,{#VIOS_NAME}])<>"Running"
+                          and last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},lpar.state,{#VIOS_NAME}])<>"unknown"
+              priority: HIGH
