@@ -1,0 +1,193 @@
+zabbix_export:
+  version: '6.2'
+  date: '2026-04-01T00:00:00Z'
+
+  templates:
+    - uuid: 7c47b0a1d7984b249cc386103b8ed4cc
+      template: 'IBM_FlashSystem_V7K_SSH_External'
+      name: 'IBM FlashSystem V7K SSH External'
+      description: |
+        IBM FlashSystem / Storwize / SVC monitoring via SSH external checks + LLD.
+
+        Includes:
+        - Drives / Nodes / Enclosures health
+        - Pool (mdiskgrp) free% + overcommit%
+        - FC port status + speed (alerts only for inactive_configured/disabled)
+        - Volume thin anomaly (internal_capacity > capacity)
+      groups:
+        - name: 'Templates'
+
+      macros:
+        - macro: '{$V7K.USER}'
+          value: 'zabbix'
+        - macro: '{$V7K.PASSWORD}'
+          value: ''
+        - macro: '{$V7K.SSH_KEY}'
+          value: ''
+        - macro: '{$V7K.PORT}'
+          value: '22'
+
+        - macro: '{$V7K.POOL.FREE.WARN}'
+          value: '20'
+        - macro: '{$V7K.POOL.FREE.CRIT}'
+          value: '10'
+        - macro: '{$V7K.POOL.OVERCOMMIT.WARN}'
+          value: '150'
+
+      discovery_rules:
+
+        - uuid: ec086312840445dd9288cd5008a62d19
+          name: 'V7K: Drive discovery'
+          type: EXTERNAL
+          key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},discover.drives]'
+          delay: 1h
+
+          item_prototypes:
+            - uuid: d6d2be80549e494eb455089e8136e428
+              name: 'V7K: Drive {#DRIVE_ID} status'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},drive.status,{#DRIVE_ID}]'
+              delay: 5m
+              history: 7d
+              value_type: TEXT
+
+          trigger_prototypes:
+            - uuid: e2e55a7bfe24438fb92b461189087633
+              name: 'V7K: Drive {#DRIVE_ID} not online'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},drive.status,{#DRIVE_ID}])<>"online"'
+              priority: HIGH
+
+        - uuid: adf870a6e9e54a38b8457e3a2a06e02c
+          name: 'V7K: Node discovery'
+          type: EXTERNAL
+          key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},discover.nodes]'
+          delay: 1h
+
+          item_prototypes:
+            - uuid: a07803b8255044199d10676fb3221827
+              name: 'V7K: Node {#NODE_ID} status'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},node.status,{#NODE_ID}]'
+              delay: 5m
+              history: 7d
+              value_type: TEXT
+
+          trigger_prototypes:
+            - uuid: e535f45dcbce46aa990c83f1490348ed
+              name: 'V7K: Node {#NODE_ID} not online'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},node.status,{#NODE_ID}])<>"online"'
+              priority: HIGH
+
+        - uuid: e22eed7da6ce4d3b8bad08e78683056b
+          name: 'V7K: Enclosure discovery'
+          type: EXTERNAL
+          key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},discover.enclosures]'
+          delay: 2h
+
+          item_prototypes:
+            - uuid: 56883b7c98594af3ad0b4f5313ff0ada
+              name: 'V7K: Enclosure {#ENCLOSURE_ID} status'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},enclosure.status,{#ENCLOSURE_ID}]'
+              delay: 10m
+              history: 7d
+              value_type: TEXT
+
+          trigger_prototypes:
+            - uuid: fbdedd97b8404c8c8de6247a7eb703c0
+              name: 'V7K: Enclosure {#ENCLOSURE_ID} not online'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},enclosure.status,{#ENCLOSURE_ID}])<>"online"'
+              priority: AVERAGE
+
+        - uuid: 9a9a116ea82647cd9b47d4060399f776
+          name: 'V7K: Pool discovery'
+          type: EXTERNAL
+          key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},discover.pools]'
+          delay: 1h
+
+          item_prototypes:
+            - uuid: 69f51733b764414e947dc2c0e40dbe76
+              name: 'V7K: Pool {#POOL_ID} free %'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},pool.free_pct,{#POOL_ID}]'
+              delay: 10m
+              history: 30d
+              trends: 365d
+              value_type: FLOAT
+              units: '%'
+
+            - uuid: b81863b84d0545918760e9e413031f32
+              name: 'V7K: Pool {#POOL_ID} overcommit %'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},pool.overcommit_pct,{#POOL_ID}]'
+              delay: 30m
+              history: 30d
+              trends: 365d
+              value_type: FLOAT
+              units: '%'
+
+          trigger_prototypes:
+            - uuid: 3ff9a6bb7c79402692669d5863137580
+              name: 'V7K: Pool {#POOL_ID} free space low (WARN)'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},pool.free_pct,{#POOL_ID}])<{$V7K.POOL.FREE.WARN}'
+              priority: WARNING
+
+            - uuid: 8c9d93477cdc439f9997b9e96cf45a34
+              name: 'V7K: Pool {#POOL_ID} free space low (CRIT)'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},pool.free_pct,{#POOL_ID}])<{$V7K.POOL.FREE.CRIT}'
+              priority: HIGH
+
+            - uuid: 9b9b1640f25740f781bcb1c2305d9ed4
+              name: 'V7K: Pool {#POOL_ID} overcommitted'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},pool.overcommit_pct,{#POOL_ID}])>{$V7K.POOL.OVERCOMMIT.WARN}'
+              priority: AVERAGE
+
+        - uuid: f0c1ee80666f479eaea42815d06bfa27
+          name: 'V7K: FC Port discovery'
+          type: EXTERNAL
+          key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},discover.fcports]'
+          delay: 1h
+
+          item_prototypes:
+            - uuid: 98184118d2144b25a55e970b70b15416
+              name: 'V7K: FC Port {#FCPORT_ID} status ({#FCPORT_WWPN})'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},fcport.status,{#FCPORT_ID}]'
+              delay: 5m
+              history: 30d
+              value_type: TEXT
+
+            - uuid: fee0e028b8674ebb90ee5df86aa99366
+              name: 'V7K: FC Port {#FCPORT_ID} speed ({#FCPORT_WWPN})'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},fcport.speed,{#FCPORT_ID}]'
+              delay: 30m
+              history: 30d
+              value_type: TEXT
+
+          trigger_prototypes:
+            - uuid: 2a15f7c5498e437c92712439f757ac23
+              name: 'V7K: FC Port {#FCPORT_ID} link down (configured/disabled)'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},fcport.status,{#FCPORT_ID}])="inactive_configured" or last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},fcport.status,{#FCPORT_ID}])="disabled"'
+              priority: HIGH
+
+        - uuid: 9187129c632c45699db3f144710bfb1b
+          name: 'V7K: Volume discovery'
+          type: EXTERNAL
+          key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},discover.vdisks]'
+          delay: 2h
+
+          item_prototypes:
+            - uuid: d7a33c0c01b845b38500f1543ee74e8a
+              name: 'V7K: VDisk {#VDISK_ID} allocated > provisioned'
+              type: EXTERNAL
+              key: 'v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},vdisk.alloc_gt_prov,{#VDISK_ID}]'
+              delay: 1h
+              history: 30d
+              value_type: UNSIGNED
+
+          trigger_prototypes:
+            - uuid: d7114c387c014d5d8a402de30d4c53bf
+              name: 'V7K: VDisk {#VDISK_ID} thin provisioning anomaly'
+              expression: 'last(/IBM_FlashSystem_V7K_SSH_External/v7k_zbx.sh[{HOST.CONN},{$V7K.USER},{$V7K.PASSWORD},{$V7K.PORT},{$V7K.SSH_KEY},vdisk.alloc_gt_prov,{#VDISK_ID}])=1'
+              priority: AVERAGE
