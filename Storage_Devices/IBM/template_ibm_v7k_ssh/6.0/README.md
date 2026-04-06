@@ -4,6 +4,11 @@
 
 This repository provides a **Zabbix External Check solution** for monitoring **IBM FlashSystem / Storwize / SVC (V7K family)** systems via **SSH**.
 
+###Author
+
+Rosen Georgiev (rosen.georgiev1@ibm.com)
+https://github.com/rgeorgie
+
 ### Disclaimer
 
 This project is an independent open source work.
