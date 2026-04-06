@@ -88,7 +88,7 @@ zabbix_export:
               expression: last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.state,{#MS_NAME}])<>"Operating"
                           and last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.state,{#MS_NAME}])<>"unknown"
               priority: HIGH
-            - uuid: 1a6c9d30-2f1a-4c78-9b55-6c7a8e0f4b91
+            - uuid: 1a6c9d302f1a4c789b556c7a8e0f4b91
               name: "HMC PCM: High baseboard temperature on {#MS_NAME}"
               expression: last(/IBM_Power_HMC_REST_External/hmc_api_zbx.sh[{HOST.CONN},{$HMC.USER},{$HMC.PASSWORD},system.temp.baseboard,{#MS_NAME}])>60
               priority: WARNING
