@@ -2,7 +2,7 @@
 
 ## Overview
 
-This repository contains a Zabbix 6.4 template for monitoring **Extreme Networks Switches** via SNMP. Collects CPU, memory, interface traffic, errors, utilization, and uptime metrics using the Extreme Networks enterprise MIB and standard IF-MIB.
+This repository contains a Zabbix 6.4 template for monitoring **Extreme VOSS/Fabric Engine Networks Switches** via SNMP. Collects CPU, memory, interface traffic, errors, utilization, and uptime metrics using the Extreme Networks enterprise MIB and standard IF-MIB.
 
 ---
 
