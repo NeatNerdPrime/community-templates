@@ -1,0 +1,359 @@
+zabbix_export:
+  version: '6.4'
+  template_groups:
+    - uuid: d1fda2cf45b5412e9c050cd2256e019f
+      name: 'Templates/User Created'
+  templates:
+    - uuid: d105d9607ad74193b4debeee089d4d7d
+      template: 'Extreme AP SNMP'
+      name: 'Extreme AP SNMP'
+      description: 'SNMPv3 monitoring template for Extreme Networks APs running IQ Engine (HiveOS). Tested on AP130/AP4000-WW with IQ Engine 10.8r5.'
+      groups:
+        - name: 'Templates/User Created'
+      items:
+        - uuid: 848ac46ca9014b9aa979e56ac184f7eb
+          name: 'AP Total Client Count'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.2.4.0
+          key: ap.clients.total
+          delay: 3m
+          history: 30d
+          trends: 90d
+          description: 'Total number of associated wireless clients across all radios and SSIDs'
+          triggers:
+            - uuid: 0064a586d02a436995aa4502a98912c8
+              expression: 'last(/Extreme AP SNMP/ap.clients.total)>{$AP_CLIENT_HIGH}'
+              name: 'High client count on AP {HOST.NAME}'
+              priority: WARNING
+        - uuid: 08ee0443dfc94327bd8409954469b169
+          name: 'AP CPU Utilization'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.2.10.0
+          key: ap.cpu.util
+          delay: 3m
+          history: 7d
+          trends: 90d
+          units: '%'
+          description: 'AP CPU utilization percentage from Aerohive MIB'
+          triggers:
+            - uuid: 02b111fdd1154c50b0a12bc8c2645dc6
+              expression: 'avg(/Extreme AP SNMP/ap.cpu.util,5m)>{$CPU_HIGH}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'avg(/Extreme AP SNMP/ap.cpu.util,5m)<={$CPU_HIGH}-5'
+              name: 'Critical CPU utilization on AP {HOST.NAME}'
+              priority: HIGH
+            - uuid: 20f7538d47174bc79e5ff99d95756bca
+              expression: 'avg(/Extreme AP SNMP/ap.cpu.util,5m)>{$CPU_WARN}'
+              recovery_mode: RECOVERY_EXPRESSION
+              recovery_expression: 'avg(/Extreme AP SNMP/ap.cpu.util,5m)<={$CPU_WARN}-5'
+              name: 'High CPU utilization on AP {HOST.NAME}'
+              priority: WARNING
+        - uuid: adc8135798334d43aa58e39e3df95a3a
+          name: 'AP Firmware Version'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.2.12.0
+          key: ap.firmware
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'IQ Engine firmware build string'
+        - uuid: 8405c77d2c8049f59c87f6f90a2e2b3e
+          name: 'AP Hardware Version'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.2.8.0
+          key: ap.hw.version
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Hardware revision'
+        - uuid: 265ceba73ff14580a55268d1f8fd0bc6
+          name: 'AP MAC Address'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.3.2.0
+          key: ap.mac
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'AP base MAC address'
+        - uuid: 41cfb1d329974548b347ffca4dac053f
+          name: 'AP Management IP'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.3.3.0
+          key: ap.mgmt.ip
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'AP management IP address'
+        - uuid: d07f0cc99af44e2f83103626a32ecb76
+          name: 'AP Model'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.2.6.0
+          key: ap.model
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Aerohive AP model number (e.g. AP4000-WW)'
+        - uuid: ce076e075ff7406fa5634fa511f14e5e
+          name: 'AP Number of Radios'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.2.3.0
+          key: ap.radio.count
+          delay: 1h
+          history: 7d
+          trends: 90d
+          description: 'Total number of radios on the AP'
+        - uuid: 2fce661af6724b8abe5b7ac2eaa19787
+          name: 'AP Radio Signal Info'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.3.1.0
+          key: ap.radio.rssi
+          delay: 5m
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'RSSI string for all radios (e.g. wifi0: -96 dBm, wifi1: -96 dBm, wifi2: -89 dBm)'
+        - uuid: 3b2223aa437646b28da9e901c4177a43
+          name: 'AP Serial Number'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.4.1.26928.1.2.5.0
+          key: ap.serial
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Aerohive AP serial number'
+        - uuid: bab827adc68747f2985e7910dfb0bee1
+          name: 'System Contact'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.4.0
+          key: system.contact
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: sysContact
+        - uuid: a0025bf216524300a60b7d73f17687d7
+          name: 'System Description'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.1.0
+          key: system.descr
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'sysDescr - Product and firmware info string'
+        - uuid: 02ddab692feb478c8a0fef94016a5978
+          name: 'System Location'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.6.0
+          key: system.location
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: sysLocation
+        - uuid: f1f55d830330494482add404553f4d9f
+          name: 'System Name'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.5.0
+          key: system.name
+          delay: 1h
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: sysName
+        - uuid: 3b24737d3676410e8ab2205a632510ba
+          name: 'System Uptime'
+          type: SNMP_AGENT
+          snmp_oid: 1.3.6.1.2.1.1.3.0
+          key: system.uptime
+          delay: 5m
+          history: 7d
+          trends: 90d
+          units: uptime
+          description: 'sysUpTime - Time since last reboot'
+          triggers:
+            - uuid: fd0c739e7b92494ba7270a5ea7dc0bc3
+              expression: 'last(/Extreme AP SNMP/system.uptime)<600'
+              name: 'AP {HOST.NAME} has been restarted'
+              priority: WARNING
+              manual_close: 'YES'
+      discovery_rules:
+        - uuid: 717a04a668bd4ff6a691e26a5decdfd8
+          name: 'Network Interface Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#IFINDEX},.1.3.6.1.2.1.2.2.1.1,{#IFNAME},.1.3.6.1.2.1.2.2.1.2,{#IFALIAS},.1.3.6.1.2.1.31.1.1.1.18,{#IFTYPE},.1.3.6.1.2.1.2.2.1.3]'
+          key: net.if.discovery
+          delay: 1h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#IFNAME}'
+                value: '^(eth[0-9]+|wifi[0-9]+)$'
+                formulaid: A
+              - macro: '{#IFTYPE}'
+                value: ^6$
+                formulaid: B
+          description: 'Discovers physical interfaces. Filtered to eth0 and wifi0/wifi1/wifi2 only.'
+          item_prototypes:
+            - uuid: 38a914da7fd745a49d4c824800090cb6
+              name: 'Interface {#IFNAME}: In Discards'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.13.{#IFINDEX}'
+              key: 'net.if.in.discards[{#IFNAME}]'
+              delay: 5m
+              history: 30d
+              trends: 90d
+              units: pps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+            - uuid: 7861cb3f687f40479441fc57f28a4bd4
+              name: 'Interface {#IFNAME}: In Errors'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.14.{#IFINDEX}'
+              key: 'net.if.in.errors[{#IFNAME}]'
+              delay: 5m
+              history: 30d
+              trends: 90d
+              units: eps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              trigger_prototypes:
+                - uuid: 08df8ba2883042868de21d14c3b236c7
+                  expression: 'avg(/Extreme AP SNMP/net.if.in.errors[{#IFNAME}],5m)>{$IF_ERRORS_WARN}'
+                  name: 'High inbound error rate on {#IFNAME} on {HOST.NAME}'
+                  priority: WARNING
+            - uuid: 6b70d835689c432e81fc186d4b803ec3
+              name: 'Interface {#IFNAME}: In Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.6.{#IFINDEX}'
+              key: 'net.if.in[{#IFNAME}]'
+              delay: 5m
+              history: 30d
+              trends: 90d
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+            - uuid: bbe0a8f611164ec58878107dd3ceb25e
+              name: 'Interface {#IFNAME}: Out Discards'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.19.{#IFINDEX}'
+              key: 'net.if.out.discards[{#IFNAME}]'
+              delay: 5m
+              history: 30d
+              trends: 90d
+              units: pps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+            - uuid: 29809535e9604c8d912a025153069c31
+              name: 'Interface {#IFNAME}: Out Errors'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.20.{#IFINDEX}'
+              key: 'net.if.out.errors[{#IFNAME}]'
+              delay: 5m
+              history: 30d
+              trends: 90d
+              units: eps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              trigger_prototypes:
+                - uuid: 7f3a9d2e1b4c4f0e8a6d2c9b3e7f1a4d
+                  expression: 'avg(/Extreme AP SNMP/net.if.out.errors[{#IFNAME}],5m)>{$IF_ERRORS_WARN}'
+                  name: 'High outbound error rate on {#IFNAME} on {HOST.NAME}'
+                  priority: WARNING
+            - uuid: 53c517138abc4a6c823ffed22d2d26fb
+              name: 'Interface {#IFNAME}: Out Traffic'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.10.{#IFINDEX}'
+              key: 'net.if.out[{#IFNAME}]'
+              delay: 5m
+              history: 30d
+              trends: 90d
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+            - uuid: f00e0ab75bbe4837b0dfc0c02a7a0a45
+              name: 'Interface {#IFNAME}: Speed'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.31.1.1.1.15.{#IFINDEX}'
+              key: 'net.if.speed[{#IFNAME}]'
+              delay: 5m
+              history: 7d
+              trends: 90d
+              units: Mbps
+            - uuid: 32c857a9f42c4710a1cbb283bad92000
+              name: 'Interface {#IFNAME}: Operational Status'
+              type: SNMP_AGENT
+              snmp_oid: '1.3.6.1.2.1.2.2.1.8.{#IFINDEX}'
+              key: 'net.if.status[{#IFNAME}]'
+              history: 30d
+              trends: '0'
+              value_type: FLOAT
+              valuemap:
+                name: 'IF-MIB::ifOperStatus'
+              trigger_prototypes:
+                - uuid: da0bbdd3b3a54629b699ec728bf67784
+                  expression: 'last(/Extreme AP SNMP/net.if.status[{#IFNAME}])=2 and last(/Extreme AP SNMP/net.if.status[{#IFNAME}],#1:now-10m)=1'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'last(/Extreme AP SNMP/net.if.status[{#IFNAME}])=1'
+                  name: 'Interface {#IFNAME} went DOWN on {HOST.NAME}'
+                  priority: AVERAGE
+      tags:
+        - tag: class
+          value: software
+        - tag: target
+          value: ap
+        - tag: target
+          value: extreme
+        - tag: target
+          value: wireless
+      macros:
+        - macro: '{$AP_CLIENT_HIGH}'
+          value: '150'
+          description: 'Client count threshold for warning alert'
+        - macro: '{$CPU_HIGH}'
+          value: '95'
+          description: 'CPU threshold for critical alert'
+        - macro: '{$CPU_WARN}'
+          value: '80'
+          description: 'CPU threshold for warning alert'
+        - macro: '{$IF_ERRORS_WARN}'
+          value: '10'
+          description: 'Interface error rate threshold for warning'
+      valuemaps:
+        - uuid: b4f1aea92df64d718eef671091e546b6
+          name: 'IF-MIB::ifOperStatus'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+            - value: '3'
+              newvalue: testing
+            - value: '5'
+              newvalue: dormant
+            - value: '7'
+              newvalue: lowerLayerDown
