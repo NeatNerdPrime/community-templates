@@ -77,6 +77,7 @@ This repository is dedicated to templates that are created and maintained by Zab
         * [App Axigen-Services](Applications/Mail_servers/template_monitor_axigen_with_zabbix)
         * [Zimbra](Applications/Mail_servers/template_zimbra_collaboration)
         * [Zimbra](Applications/Mail_servers/template_zimbra_zmcontrol_status)
+        * [Stalwart](Applications/Mail_servers/template_stalwart)
     * [Misc](Applications/Misc)
         * [App Skype for business Mediation Role](Applications/Misc/template_lync_2013_mediation_role)
     * [Monitoring_System](Applications/Monitoring_System)
