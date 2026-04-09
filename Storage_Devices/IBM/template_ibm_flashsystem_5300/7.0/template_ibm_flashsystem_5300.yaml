@@ -1,0 +1,2561 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 626f260a51cd47d19dc5ea5e2082cf44
+      name: Templates/Storage Devices
+  templates:
+    - uuid: 0f5529c0d295402ea2634219bf3ee1b1
+      template: 'IBM FlashSystem 5300 by REST API and SNMP'
+      name: 'IBM FlashSystem 5300 by REST API and SNMP'
+      description: |
+        Template for monitoring IBM Storage FlashSystem 5300 (Spectrum Virtualize).
+        Uses REST API (HTTP Agent) for performance, capacity and hardware monitoring.
+        Uses SNMP traps for event notifications (IBM-SVC-MIB).
+
+        Requirements:
+        - REST API access on port 7443 (HTTPS)
+        - REST API user with Monitor or Administrator role
+        - SNMP trap receiver configured on Zabbix server (snmptrapd)
+        - SNMP trap sender configured on FlashSystem (mksnmpserver)
+
+        Tested on: IBM FlashSystem 5300, Spectrum Virtualize 8.6.x / 8.7.x
+      groups:
+        - name: Templates/Storage Devices
+      # ──────────────────────────────────────────────
+      #  MACROS
+      # ──────────────────────────────────────────────
+      macros:
+        - macro: '{$IBM.API.URL}'
+          value: 'https://{HOST.CONN}:7443/rest/v1'
+          description: 'Base URL for FlashSystem REST API.'
+        - macro: '{$IBM.API.USER}'
+          value: 'monitor'
+          description: 'REST API username.'
+        - macro: '{$IBM.API.PASSWORD}'
+          type: SECRET_TEXT
+          description: 'REST API password.'
+        - macro: '{$IBM.HTTP.PROXY}'
+          description: 'HTTP proxy for API requests (leave empty for direct connection).'
+        - macro: '{$IBM.API.INTERVAL}'
+          value: 5m
+          description: 'Default polling interval for REST API items.'
+        - macro: '{$IBM.API.INTERVAL.PERF}'
+          value: 1m
+          description: 'Polling interval for performance metrics.'
+        - macro: '{$IBM.API.INTERVAL.DISCOVERY}'
+          value: 1h
+          description: 'Polling interval for discovery rules.'
+        - macro: '{$IBM.API.TIMEOUT}'
+          value: 15s
+          description: 'HTTP request timeout.'
+        - macro: '{$IBM.POOL.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold for pool utilization (%).'
+        - macro: '{$IBM.POOL.UTIL.CRIT}'
+          value: '90'
+          description: 'Critical threshold for pool utilization (%).'
+        - macro: '{$IBM.CPU.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold for CPU utilization (%).'
+        - macro: '{$IBM.CPU.UTIL.CRIT}'
+          value: '90'
+          description: 'Critical threshold for CPU utilization (%).'
+        - macro: '{$IBM.CACHE.UTIL.WARN}'
+          value: '80'
+          description: 'Warning threshold for write cache utilization (%).'
+        - macro: '{$IBM.TEMP.WARN}'
+          value: '35'
+          description: 'Warning threshold for temperature (Celsius).'
+        - macro: '{$IBM.TEMP.CRIT}'
+          value: '40'
+          description: 'Critical threshold for temperature (Celsius).'
+        - macro: '{$IBM.DRIVE.NAME.MATCHES}'
+          value: '.*'
+          description: 'Filter to include drives in discovery.'
+        - macro: '{$IBM.DRIVE.NAME.NOT_MATCHES}'
+          value: CHANGE_IF_NEEDED
+          description: 'Filter to exclude drives from discovery.'
+        - macro: '{$IBM.POOL.NAME.MATCHES}'
+          value: '.*'
+          description: 'Filter to include storage pools in discovery.'
+        - macro: '{$IBM.POOL.NAME.NOT_MATCHES}'
+          value: CHANGE_IF_NEEDED
+          description: 'Filter to exclude storage pools from discovery.'
+        - macro: '{$IBM.VOLUME.NAME.MATCHES}'
+          value: '.*'
+          description: 'Filter to include volumes in discovery.'
+        - macro: '{$IBM.VOLUME.NAME.NOT_MATCHES}'
+          value: CHANGE_IF_NEEDED
+          description: 'Filter to exclude volumes from discovery.'
+        - macro: '{$SNMP_COMMUNITY}'
+          value: public
+          description: 'SNMP community string for traps.'
+        - macro: '{$IBM.VDISK.LATENCY.WARN}'
+          value: '20'
+          description: 'Warning threshold for volume latency (ms).'
+        - macro: '{$IBM.VDISK.LATENCY.CRIT}'
+          value: '50'
+          description: 'Critical threshold for volume latency (ms).'
+      # ──────────────────────────────────────────────
+      #  ITEMS - System Information (lssystem)
+      # ──────────────────────────────────────────────
+      items:
+        # ── ICMP ──
+        - uuid: 3e7e445223f345eca0bb905b78040996
+          name: 'ICMP: Ping'
+          type: SIMPLE
+          key: icmpping
+          delay: 1m
+          history: 7d
+          value_type: UNSIGNED
+          description: 'Host availability check via ICMP ping.'
+          valuemap:
+            name: 'Service state'
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: ebdc4132484f48eaa660de6e9f2f11b9
+              expression: 'max(/IBM FlashSystem 5300 by REST API and SNMP/icmpping,#3)=0'
+              name: 'IBM FlashSystem: Unavailable by ICMP ping'
+              priority: HIGH
+              description: 'Last three ICMP ping attempts failed.'
+              tags:
+                - tag: scope
+                  value: availability
+
+        - uuid: e9a02bc8d4a2468a8e24ef7e52f38dc0
+          name: 'ICMP: Loss'
+          type: SIMPLE
+          key: icmppingloss
+          delay: 1m
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '%'
+          description: 'ICMP packet loss percentage.'
+          tags:
+            - tag: component
+              value: health
+
+        - uuid: 0fdda19c256140a19a53ad6e6ded749a
+          name: 'ICMP: Response time'
+          type: SIMPLE
+          key: icmppingsec
+          delay: 1m
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: s
+          description: 'ICMP ping response time.'
+          tags:
+            - tag: component
+              value: health
+
+        # ── REST API: lssystem (master item) ──
+        - uuid: fe6ca9794d864792a980bff73b312b0a
+          name: 'API: Get system info'
+          type: SCRIPT
+          key: ibm.api.lssystem
+          delay: '{$IBM.API.INTERVAL}'
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'Retrieves system information via lssystem REST API call.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lssystem');
+          tags:
+            - tag: component
+              value: raw
+
+        # ── Dependent items from lssystem ──
+        - uuid: 5539221509dd44de84c0988758b5d16e
+          name: 'System: Name'
+          type: DEPENDENT
+          key: ibm.system.name
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'FlashSystem cluster name.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.name
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: b994cca0fa6744d4acdd75839877a5c2
+          name: 'System: Location'
+          type: DEPENDENT
+          key: ibm.system.location
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Physical location of the system.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.location
+              error_handler: CUSTOM_VALUE
+              error_handler_params: ''
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: 36a40abe964843ed9e3548cb9c2a3d1a
+          name: 'System: Code level'
+          type: DEPENDENT
+          key: ibm.system.code_level
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Firmware/software code level.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.code_level
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 0f9be78618264d89ab72e0a4e6ba3f6d
+              expression: 'change(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.code_level)=1 and length(last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.code_level))>0'
+              name: 'IBM FlashSystem: Firmware version changed'
+              priority: INFO
+              description: 'System firmware version has changed.'
+              tags:
+                - tag: scope
+                  value: notice
+
+        - uuid: be85db6907d34a82ac853d1272621231
+          name: 'System: Product name'
+          type: DEPENDENT
+          key: ibm.system.product_name
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Product name (e.g. IBM FlashSystem 5300).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.product_name
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: 83bbf79b2a554acab938b277375895a2
+          name: 'System: Machine type-model'
+          type: DEPENDENT
+          key: ibm.system.machine_type_model
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Machine type and model (e.g. 4662-7H2).'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.["machine_type-model"]'
+              error_handler: CUSTOM_VALUE
+              error_handler_params: ''
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: af6c3034d888414f9b7ccf2fb9cebb8a
+          name: 'System: Serial number'
+          type: DEPENDENT
+          key: ibm.system.serial_number
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'System serial number.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.id
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: 8178186e11bc4d3d988463b5e9e82c0c
+          name: 'System: Total MDisk capacity'
+          type: DEPENDENT
+          key: ibm.system.total_mdisk_capacity
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: B
+          description: 'Total managed disk capacity in the system.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.total_mdisk_capacity
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  // Convert value like "10.5TB" to bytes
+                  var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                  if (!m) return 0;
+                  var n = parseFloat(m[1]);
+                  var u = m[2].toUpperCase();
+                  var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                  return Math.round(n * (mul[u] || 1));
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: capacity
+
+        - uuid: 7d7561e0b8834d21824da7077b4e5d9b
+          name: 'System: Total used capacity'
+          type: DEPENDENT
+          key: ibm.system.total_used_capacity
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: B
+          description: 'Total used capacity in the system.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.space_allocated_to_vdisks
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                  if (!m) return 0;
+                  var n = parseFloat(m[1]);
+                  var u = m[2].toUpperCase();
+                  var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                  return Math.round(n * (mul[u] || 1));
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: capacity
+
+        - uuid: e42c4aa5ef5b427882ecc1ab3f93bb23
+          name: 'System: Total free capacity'
+          type: DEPENDENT
+          key: ibm.system.total_free_capacity
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: B
+          description: 'Total free space on managed disks.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.total_free_space
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                  if (!m) return 0;
+                  var n = parseFloat(m[1]);
+                  var u = m[2].toUpperCase();
+                  var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                  return Math.round(n * (mul[u] || 1));
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: capacity
+
+        - uuid: bd0484fd1c3048a882a22df06cd7627a
+          name: 'System: Overall status'
+          type: DEPENDENT
+          key: ibm.system.statistics_status
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Indicates whether the system statistics collection is active.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.statistics_status
+              error_handler: CUSTOM_VALUE
+              error_handler_params: unknown
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: 7b13483d123e4f38babfd97235144cce
+          name: 'System: Compression savings'
+          type: DEPENDENT
+          key: ibm.system.compression_cpu_pc
+          delay: '0'
+          history: 7d
+          trends: '0'
+          value_type: CHAR
+          description: 'Compression active state.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.compression_active
+              error_handler: CUSTOM_VALUE
+              error_handler_params: 'no'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        - uuid: 5357d908bc4d49d1b01c68104f759d4d
+          name: 'System: Total nodes'
+          type: DEPENDENT
+          key: ibm.system.total_nodes
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: UNSIGNED
+          description: 'Total number of configured node canisters.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.total_nodes_configured
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: ibm.api.lssystem
+          tags:
+            - tag: component
+              value: system
+
+        # ── REST API: lssystemstats (master item) ──
+        - uuid: 6078c7b226014a809be6909599b0b3f7
+          name: 'API: Get system statistics'
+          type: SCRIPT
+          key: ibm.api.lssystemstats
+          delay: '{$IBM.API.INTERVAL.PERF}'
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'Retrieves system performance statistics via lssystemstats REST API call.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lssystemstats');
+          tags:
+            - tag: component
+              value: raw
+
+        # ── Dependent items from lssystemstats ──
+        - uuid: 1536974a45de402b83e1522d48196254
+          name: 'Performance: CPU utilization'
+          type: DEPENDENT
+          key: ibm.system.cpu_pc
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '%'
+          description: 'Total CPU utilization across all nodes.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="cpu_pc")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: cpu
+          triggers:
+            - uuid: 1281e056421147749d014aea9f8b9397
+              expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.cpu_pc,5m)>{$IBM.CPU.UTIL.CRIT}'
+              name: 'IBM FlashSystem: CPU utilization critical (>{$IBM.CPU.UTIL.CRIT}%)'
+              priority: HIGH
+              description: 'CPU utilization has exceeded {$IBM.CPU.UTIL.CRIT}% for 5 minutes.'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: bab619ec0815457986b366c3744772c7
+              expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.cpu_pc,5m)>{$IBM.CPU.UTIL.WARN}'
+              name: 'IBM FlashSystem: CPU utilization warning (>{$IBM.CPU.UTIL.WARN}%)'
+              priority: WARNING
+              description: 'CPU utilization has exceeded {$IBM.CPU.UTIL.WARN}% for 5 minutes.'
+              dependencies:
+                - name: 'IBM FlashSystem: CPU utilization critical (>{$IBM.CPU.UTIL.CRIT}%)'
+                  expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.cpu_pc,5m)>{$IBM.CPU.UTIL.CRIT}'
+              tags:
+                - tag: scope
+                  value: performance
+
+        - uuid: 24922a688ddb44f5a545ebfdc9127db5
+          name: 'Performance: Write cache utilization'
+          type: DEPENDENT
+          key: ibm.system.write_cache_pc
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '%'
+          description: 'Write cache utilization percentage.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="write_cache_pc")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: cache
+          triggers:
+            - uuid: dbc9ac32d62b43309668d1d9e3a8fc07
+              expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.write_cache_pc,5m)>{$IBM.CACHE.UTIL.WARN}'
+              name: 'IBM FlashSystem: Write cache utilization high (>{$IBM.CACHE.UTIL.WARN}%)'
+              priority: WARNING
+              description: 'Write cache utilization exceeded {$IBM.CACHE.UTIL.WARN}% for 5 minutes.'
+              tags:
+                - tag: scope
+                  value: performance
+
+        - uuid: 7c4fdc89b07c4f4695391be2cdf41d7e
+          name: 'Performance: Total cache utilization'
+          type: DEPENDENT
+          key: ibm.system.total_cache_pc
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '%'
+          description: 'Total cache utilization percentage.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="total_cache_pc")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: cache
+
+        - uuid: 2ee999698e04462cb148f4b392684090
+          name: 'Performance: Volume read IOPS'
+          type: DEPENDENT
+          key: ibm.system.vdisk_r_io
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '!ops/s'
+          description: 'Total volume (vdisk) read IOPS.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_r_io")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: df43025ac67944ac9f83ea10d07e50e4
+          name: 'Performance: Volume write IOPS'
+          type: DEPENDENT
+          key: ibm.system.vdisk_w_io
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '!ops/s'
+          description: 'Total volume (vdisk) write IOPS.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_w_io")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: bddf57a413c243018b33bdeaec9a7c8b
+          name: 'Performance: Volume total IOPS'
+          type: DEPENDENT
+          key: ibm.system.vdisk_io
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '!ops/s'
+          description: 'Total volume (vdisk) I/O operations per second.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_io")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: cf450519f6c2412aa6ec2ad34f8ff4d0
+          name: 'Performance: Volume read throughput'
+          type: DEPENDENT
+          key: ibm.system.vdisk_r_mb
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: Bps
+          description: 'Total volume read throughput.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_r_mb")].stat_current.first()'
+            - type: MULTIPLIER
+              parameters:
+                - '1048576'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: 6105412bcebd4429931e45bc4c1419d2
+          name: 'Performance: Volume write throughput'
+          type: DEPENDENT
+          key: ibm.system.vdisk_w_mb
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: Bps
+          description: 'Total volume write throughput.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_w_mb")].stat_current.first()'
+            - type: MULTIPLIER
+              parameters:
+                - '1048576'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: 1125b8e97f8c42578ee3f5d86cb34545
+          name: 'Performance: Volume read latency'
+          type: DEPENDENT
+          key: ibm.system.vdisk_r_ms
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: ms
+          description: 'Average volume read latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_r_ms")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: abe409d472d54d04be13a72019c8c335
+          name: 'Performance: Volume write latency'
+          type: DEPENDENT
+          key: ibm.system.vdisk_w_ms
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: ms
+          description: 'Average volume write latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_w_ms")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: c1c9c420b2d74670871de127e7afbe46
+          name: 'Performance: Volume overall latency'
+          type: DEPENDENT
+          key: ibm.system.vdisk_ms
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: ms
+          description: 'Average overall volume latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="vdisk_ms")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+          triggers:
+            - uuid: 5ea107a9a92548bd9926f94745d77a73
+              expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.vdisk_ms,5m)>{$IBM.VDISK.LATENCY.CRIT}'
+              name: 'IBM FlashSystem: Volume latency critical (>{$IBM.VDISK.LATENCY.CRIT}ms)'
+              priority: HIGH
+              description: 'Overall volume latency exceeded {$IBM.VDISK.LATENCY.CRIT}ms for 5 minutes.'
+              tags:
+                - tag: scope
+                  value: performance
+            - uuid: e32d3be1805b4292ad65afe2030a26af
+              expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.vdisk_ms,5m)>{$IBM.VDISK.LATENCY.WARN}'
+              name: 'IBM FlashSystem: Volume latency warning (>{$IBM.VDISK.LATENCY.WARN}ms)'
+              priority: WARNING
+              description: 'Overall volume latency exceeded {$IBM.VDISK.LATENCY.WARN}ms for 5 minutes.'
+              dependencies:
+                - name: 'IBM FlashSystem: Volume latency critical (>{$IBM.VDISK.LATENCY.CRIT}ms)'
+                  expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.vdisk_ms,5m)>{$IBM.VDISK.LATENCY.CRIT}'
+              tags:
+                - tag: scope
+                  value: performance
+
+        - uuid: 07b79b0ca4ef489e9894dfb1e7d0b880
+          name: 'Performance: Drive total IOPS'
+          type: DEPENDENT
+          key: ibm.system.drive_io
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '!ops/s'
+          description: 'Total physical drive I/O operations per second.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="drive_io")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: d9e2e6d73cfa49b9ab537e29364dbb17
+          name: 'Performance: Drive read latency'
+          type: DEPENDENT
+          key: ibm.system.drive_r_ms
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: ms
+          description: 'Average drive read latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="drive_r_ms")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: 620485648d8a4847a64e41226a48b0c9
+          name: 'Performance: Drive write latency'
+          type: DEPENDENT
+          key: ibm.system.drive_w_ms
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: ms
+          description: 'Average drive write latency.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="drive_w_ms")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: dc46507df90e484aba94a46c5e29c381
+          name: 'Performance: FC IOPS'
+          type: DEPENDENT
+          key: ibm.system.fc_io
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: '!ops/s'
+          description: 'Total Fibre Channel I/O operations per second.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="fc_io")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: e658e35d13e54760a43d6e59a2c16b29
+          name: 'Performance: FC throughput'
+          type: DEPENDENT
+          key: ibm.system.fc_mb
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: Bps
+          description: 'Total Fibre Channel throughput.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="fc_mb")].stat_current.first()'
+            - type: MULTIPLIER
+              parameters:
+                - '1048576'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: performance
+
+        - uuid: 7874b23c4e534f8089512a431c696b4d
+          name: 'Environment: Temperature'
+          type: DEPENDENT
+          key: ibm.system.temp_c
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: "\xB0C"
+          description: 'Ambient temperature in Celsius.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="temp_c")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: temperature
+          triggers:
+            - uuid: 66da29be52ef4daba4425ef05ceec2ae
+              expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.temp_c,5m)>{$IBM.TEMP.CRIT}'
+              name: 'IBM FlashSystem: Temperature critical (>{$IBM.TEMP.CRIT}C)'
+              priority: HIGH
+              description: 'Ambient temperature exceeded {$IBM.TEMP.CRIT}C.'
+              tags:
+                - tag: scope
+                  value: availability
+            - uuid: 4c1cf51557ad43029ed713e94ecace2a
+              expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.temp_c,5m)>{$IBM.TEMP.WARN}'
+              name: 'IBM FlashSystem: Temperature warning (>{$IBM.TEMP.WARN}C)'
+              priority: WARNING
+              description: 'Ambient temperature exceeded {$IBM.TEMP.WARN}C.'
+              dependencies:
+                - name: 'IBM FlashSystem: Temperature critical (>{$IBM.TEMP.CRIT}C)'
+                  expression: 'min(/IBM FlashSystem 5300 by REST API and SNMP/ibm.system.temp_c,5m)>{$IBM.TEMP.CRIT}'
+              tags:
+                - tag: scope
+                  value: availability
+
+        - uuid: a7ec7b2381ab4799b11a9da19f427707
+          name: 'Environment: Power consumption'
+          type: DEPENDENT
+          key: ibm.system.power_w
+          delay: '0'
+          history: 7d
+          trends: 365d
+          value_type: FLOAT
+          units: W
+          description: 'System power consumption in watts.'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.[?(@.stat_name=="power_w")].stat_current.first()'
+          master_item:
+            key: ibm.api.lssystemstats
+          tags:
+            - tag: component
+              value: power
+
+        # ── REST API: lsenclosurepsu (master item) ──
+        - uuid: 37230aa7b6c84e1599e2e7b9a2cdaffd
+          name: 'API: Get enclosure PSU data'
+          type: SCRIPT
+          key: ibm.api.lsenclosurepsu
+          delay: '{$IBM.API.INTERVAL}'
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'Retrieves all enclosure PSU data via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsenclosurepsu');
+          tags:
+            - tag: component
+              value: raw
+
+        # ── REST API: lsenclosurebattery (master item) ──
+        - uuid: 3fc2f60c837742c09591cd04281326ae
+          name: 'API: Get enclosure battery data'
+          type: SCRIPT
+          key: ibm.api.lsenclosurebattery
+          delay: '{$IBM.API.INTERVAL}'
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'Retrieves all enclosure battery data via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsenclosurebattery');
+          tags:
+            - tag: component
+              value: raw
+
+        # ── REST API: lsportfc (master item) ──
+        - uuid: 2d8d792f4a624cc48f54964aec2babdb
+          name: 'API: Get FC port data'
+          type: SCRIPT
+          key: ibm.api.lsportfc
+          delay: '{$IBM.API.INTERVAL}'
+          history: '0'
+          trends: '0'
+          value_type: TEXT
+          description: 'Retrieves all FC port data via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsportfc');
+          tags:
+            - tag: component
+              value: raw
+
+        # ── SNMP Trap items ──
+        - uuid: 3d1cc15b58ec44088f1a4fb58346c748
+          name: 'SNMP Trap: Error events'
+          type: SNMP_TRAP
+          key: 'snmptrap["1.3.6.1.4.1.2.6.190.1"]'
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: LOG
+          description: 'IBM-SVC-MIB tsveETrap - Error level SNMP trap notifications.'
+          tags:
+            - tag: component
+              value: trap
+          triggers:
+            - uuid: 02708de702cb46978221fc23e62fbe9c
+              expression: 'nodata(/IBM FlashSystem 5300 by REST API and SNMP/snmptrap["1.3.6.1.4.1.2.6.190.1"],30)=0'
+              name: 'IBM FlashSystem: SNMP error trap received'
+              priority: HIGH
+              description: 'An error-level SNMP trap was received from the FlashSystem.'
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: availability
+
+        - uuid: 9615c04326d0456e8387fecb66a924bf
+          name: 'SNMP Trap: Warning events'
+          type: SNMP_TRAP
+          key: 'snmptrap["1.3.6.1.4.1.2.6.190.2"]'
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: LOG
+          description: 'IBM-SVC-MIB tsveWTrap - Warning level SNMP trap notifications.'
+          tags:
+            - tag: component
+              value: trap
+          triggers:
+            - uuid: 5bef5023dfca4603955c61aede1074ba
+              expression: 'nodata(/IBM FlashSystem 5300 by REST API and SNMP/snmptrap["1.3.6.1.4.1.2.6.190.2"],30)=0'
+              name: 'IBM FlashSystem: SNMP warning trap received'
+              priority: WARNING
+              description: 'A warning-level SNMP trap was received from the FlashSystem.'
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: notice
+
+        - uuid: 2ca0e27c54f8470fb7c619082dbb1f51
+          name: 'SNMP Trap: Info events'
+          type: SNMP_TRAP
+          key: 'snmptrap["1.3.6.1.4.1.2.6.190.3"]'
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: LOG
+          description: 'IBM-SVC-MIB tsveITrap - Informational SNMP trap notifications.'
+          tags:
+            - tag: component
+              value: trap
+
+        - uuid: af999de1716d44b5b06dd954ec1102c7
+          name: 'SNMP Trap: Fallback'
+          type: SNMP_TRAP
+          key: snmptrap.fallback
+          delay: '0'
+          history: 30d
+          trends: '0'
+          value_type: LOG
+          description: 'Catches any SNMP traps not matched by the specific trap items.'
+          tags:
+            - tag: component
+              value: trap
+
+      # ──────────────────────────────────────────────
+      #  DISCOVERY RULES
+      # ──────────────────────────────────────────────
+      discovery_rules:
+        # ── Storage Pool Discovery ──
+        - uuid: 1fccf5b71544451ebdee239bdc851973
+          name: 'Storage pool discovery'
+          type: SCRIPT
+          key: ibm.api.lsmdiskgrp.discovery
+          delay: '{$IBM.API.INTERVAL.DISCOVERY}'
+          description: 'Discovers storage pools (managed disk groups) via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsmdiskgrp');
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var result = [];
+                  for (var i = 0; i < data.length; i++) {
+                    result.push({
+                      "{#POOL.ID}": data[i].id,
+                      "{#POOL.NAME}": data[i].name,
+                      "{#POOL.STATUS}": data[i].status
+                    });
+                  }
+                  return JSON.stringify(result);
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#POOL.NAME}'
+                value: '{$IBM.POOL.NAME.MATCHES}'
+                formulaid: A
+              - macro: '{#POOL.NAME}'
+                value: '{$IBM.POOL.NAME.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: B
+          item_prototypes:
+            - uuid: 188a7ea654f1428394e8042f99324249
+              name: 'Pool [{#POOL.NAME}]: Get data'
+              type: SCRIPT
+              key: 'ibm.pool.get[{#POOL.ID}]'
+              delay: '{$IBM.API.INTERVAL}'
+              history: '0'
+              trends: '0'
+              value_type: TEXT
+              description: 'Raw data for storage pool {#POOL.NAME}.'
+              timeout: '{$IBM.API.TIMEOUT}'
+              params: |
+                var req = new HttpRequest();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+                req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+                var authResp = req.post('{$IBM.API.URL}/auth');
+                var token = JSON.parse(authResp).token;
+                req.clearHeader();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Token: ' + token);
+                return req.post('{$IBM.API.URL}/lsmdiskgrp/{#POOL.NAME}');
+              tags:
+                - tag: component
+                  value: raw
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: 2b58911612fb4619aa20b1db0fca2e0b
+              name: 'Pool [{#POOL.NAME}]: Status'
+              type: DEPENDENT
+              key: 'ibm.pool.status[{#POOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Status of storage pool {#POOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.status
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: 'ibm.pool.get[{#POOL.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: 65e216ec32774a3c9b317ce603555979
+              name: 'Pool [{#POOL.NAME}]: Total capacity'
+              type: DEPENDENT
+              key: 'ibm.pool.capacity[{#POOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: B
+              description: 'Total capacity of storage pool {#POOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.capacity
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                      if (!m) return 0;
+                      var n = parseFloat(m[1]);
+                      var u = m[2].toUpperCase();
+                      var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                      return Math.round(n * (mul[u] || 1));
+              master_item:
+                key: 'ibm.pool.get[{#POOL.ID}]'
+              tags:
+                - tag: component
+                  value: capacity
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: 712d4669a2aa4a009d361902fea24d31
+              name: 'Pool [{#POOL.NAME}]: Free capacity'
+              type: DEPENDENT
+              key: 'ibm.pool.free_capacity[{#POOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: B
+              description: 'Free capacity of storage pool {#POOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.free_capacity
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                      if (!m) return 0;
+                      var n = parseFloat(m[1]);
+                      var u = m[2].toUpperCase();
+                      var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                      return Math.round(n * (mul[u] || 1));
+              master_item:
+                key: 'ibm.pool.get[{#POOL.ID}]'
+              tags:
+                - tag: component
+                  value: capacity
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: ae4ef9008d8b4da8a66a97c53534b088
+              name: 'Pool [{#POOL.NAME}]: Used capacity'
+              type: DEPENDENT
+              key: 'ibm.pool.used_capacity[{#POOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: B
+              description: 'Used capacity of storage pool {#POOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.used_capacity
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                      if (!m) return 0;
+                      var n = parseFloat(m[1]);
+                      var u = m[2].toUpperCase();
+                      var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                      return Math.round(n * (mul[u] || 1));
+              master_item:
+                key: 'ibm.pool.get[{#POOL.ID}]'
+              tags:
+                - tag: component
+                  value: capacity
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: e733cf4102c1458ea67bfab073a21807
+              name: 'Pool [{#POOL.NAME}]: Utilization'
+              type: CALCULATED
+              key: 'ibm.pool.utilization[{#POOL.ID}]'
+              delay: '{$IBM.API.INTERVAL}'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: '%'
+              description: 'Pool utilization percentage.'
+              params: '100 * last(//ibm.pool.used_capacity[{#POOL.ID}]) / last(//ibm.pool.capacity[{#POOL.ID}])'
+              tags:
+                - tag: component
+                  value: capacity
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: a3b9e0f92a1f4f8086f3394d0fdf6750
+              name: 'Pool [{#POOL.NAME}]: Overallocation'
+              type: DEPENDENT
+              key: 'ibm.pool.overallocation[{#POOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: '%'
+              description: 'Ratio of virtual to physical capacity for pool {#POOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.overallocation
+              master_item:
+                key: 'ibm.pool.get[{#POOL.ID}]'
+              tags:
+                - tag: component
+                  value: capacity
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+          trigger_prototypes:
+            - uuid: 38aef660a7094c948f59dcc496f0ea9b
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.pool.utilization[{#POOL.ID}])>{$IBM.POOL.UTIL.CRIT}'
+              name: 'IBM FlashSystem: Pool [{#POOL.NAME}] utilization critical (>{$IBM.POOL.UTIL.CRIT}%)'
+              opdata: 'Used: {ITEM.LASTVALUE1}%'
+              priority: HIGH
+              description: 'Storage pool {#POOL.NAME} utilization exceeded {$IBM.POOL.UTIL.CRIT}%.'
+              tags:
+                - tag: scope
+                  value: capacity
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: 91f06694684e4f418bd75bf7bf8838ca
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.pool.utilization[{#POOL.ID}])>{$IBM.POOL.UTIL.WARN}'
+              name: 'IBM FlashSystem: Pool [{#POOL.NAME}] utilization warning (>{$IBM.POOL.UTIL.WARN}%)'
+              opdata: 'Used: {ITEM.LASTVALUE1}%'
+              priority: WARNING
+              description: 'Storage pool {#POOL.NAME} utilization exceeded {$IBM.POOL.UTIL.WARN}%.'
+              dependencies:
+                - name: 'IBM FlashSystem: Pool [{#POOL.NAME}] utilization critical (>{$IBM.POOL.UTIL.CRIT}%)'
+                  expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.pool.utilization[{#POOL.ID}])>{$IBM.POOL.UTIL.CRIT}'
+              tags:
+                - tag: scope
+                  value: capacity
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+            - uuid: ebd9bc39ab4345e483412115c01b994d
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.pool.status[{#POOL.ID}])<>"online"'
+              name: 'IBM FlashSystem: Pool [{#POOL.NAME}] is not online'
+              opdata: 'Status: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'Storage pool {#POOL.NAME} status is not online.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: pool
+                  value: '{#POOL.NAME}'
+
+          graph_prototypes: []
+
+        # ── Drive Discovery ──
+        - uuid: 9b210647ce3e442eae13238986a6be07
+          name: 'Drive discovery'
+          type: SCRIPT
+          key: ibm.api.lsdrive.discovery
+          delay: '{$IBM.API.INTERVAL.DISCOVERY}'
+          description: 'Discovers physical drives via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsdrive');
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var result = [];
+                  for (var i = 0; i < data.length; i++) {
+                    result.push({
+                      "{#DRIVE.ID}": data[i].id,
+                      "{#DRIVE.ENCLOSURE}": data[i].enclosure_id || "",
+                      "{#DRIVE.SLOT}": data[i].slot_id || "",
+                      "{#DRIVE.STATUS}": data[i].status
+                    });
+                  }
+                  return JSON.stringify(result);
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#DRIVE.ID}'
+                value: '{$IBM.DRIVE.NAME.MATCHES}'
+                formulaid: A
+              - macro: '{#DRIVE.ID}'
+                value: '{$IBM.DRIVE.NAME.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: B
+          item_prototypes:
+            - uuid: dc130956ad7642febe4c3da68e374cf1
+              name: 'Drive [{#DRIVE.ID}]: Get data'
+              type: SCRIPT
+              key: 'ibm.drive.get[{#DRIVE.ID}]'
+              delay: '{$IBM.API.INTERVAL}'
+              history: '0'
+              trends: '0'
+              value_type: TEXT
+              description: 'Raw data for drive {#DRIVE.ID}.'
+              timeout: '{$IBM.API.TIMEOUT}'
+              params: |
+                var req = new HttpRequest();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+                req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+                var authResp = req.post('{$IBM.API.URL}/auth');
+                var token = JSON.parse(authResp).token;
+                req.clearHeader();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Token: ' + token);
+                return req.post('{$IBM.API.URL}/lsdrive/{#DRIVE.ID}');
+              tags:
+                - tag: component
+                  value: raw
+                - tag: drive
+                  value: '{#DRIVE.ID}'
+
+            - uuid: ffb4753506ee414f9d60ef9343868571
+              name: 'Drive [{#DRIVE.ID}]: Status'
+              type: DEPENDENT
+              key: 'ibm.drive.status[{#DRIVE.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Status of drive {#DRIVE.ID}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.status
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: 'ibm.drive.get[{#DRIVE.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: drive
+                  value: '{#DRIVE.ID}'
+
+            - uuid: 0911bf11416b46aeb84cf3c73357b61e
+              name: 'Drive [{#DRIVE.ID}]: Capacity'
+              type: DEPENDENT
+              key: 'ibm.drive.capacity[{#DRIVE.ID}]'
+              delay: '0'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: B
+              description: 'Capacity of drive {#DRIVE.ID}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.capacity
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                      if (!m) return 0;
+                      var n = parseFloat(m[1]);
+                      var u = m[2].toUpperCase();
+                      var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                      return Math.round(n * (mul[u] || 1));
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 12h
+              master_item:
+                key: 'ibm.drive.get[{#DRIVE.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: drive
+                  value: '{#DRIVE.ID}'
+
+            - uuid: 00090729a580456fa55486c604e07c89
+              name: 'Drive [{#DRIVE.ID}]: Technology type'
+              type: DEPENDENT
+              key: 'ibm.drive.tech_type[{#DRIVE.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Technology type of drive (SSD, NVMe, etc.).'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.tech_type
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: unknown
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 12h
+              master_item:
+                key: 'ibm.drive.get[{#DRIVE.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: drive
+                  value: '{#DRIVE.ID}'
+
+            - uuid: 0bef6faa2caa4c208b728327164371b9
+              name: 'Drive [{#DRIVE.ID}]: Firmware level'
+              type: DEPENDENT
+              key: 'ibm.drive.firmware[{#DRIVE.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Firmware level of drive {#DRIVE.ID}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.firmware_level
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: ''
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 12h
+              master_item:
+                key: 'ibm.drive.get[{#DRIVE.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: drive
+                  value: '{#DRIVE.ID}'
+
+          trigger_prototypes:
+            - uuid: 257a632008204e62a07f82912a716bd2
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.drive.status[{#DRIVE.ID}])<>"online"'
+              name: 'IBM FlashSystem: Drive [{#DRIVE.ID}] is not online'
+              opdata: 'Status: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'Drive {#DRIVE.ID} (enclosure {#DRIVE.ENCLOSURE}, slot {#DRIVE.SLOT}) is not online.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: drive
+                  value: '{#DRIVE.ID}'
+
+          graph_prototypes: []
+
+        # ── Node Canister Discovery ──
+        - uuid: 967f43beec05425ea50c48e9ebea7a67
+          name: 'Node canister discovery'
+          type: SCRIPT
+          key: ibm.api.lsnodecanister.discovery
+          delay: '{$IBM.API.INTERVAL.DISCOVERY}'
+          description: 'Discovers node canisters via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsnodecanister');
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var result = [];
+                  for (var i = 0; i < data.length; i++) {
+                    result.push({
+                      "{#NODE.ID}": data[i].id,
+                      "{#NODE.NAME}": data[i].name,
+                      "{#NODE.STATUS}": data[i].status
+                    });
+                  }
+                  return JSON.stringify(result);
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          item_prototypes:
+            - uuid: d460ec523c65473fb1dee8c36ef95b71
+              name: 'Node [{#NODE.NAME}]: Get data'
+              type: SCRIPT
+              key: 'ibm.node.get[{#NODE.ID}]'
+              delay: '{$IBM.API.INTERVAL}'
+              history: '0'
+              trends: '0'
+              value_type: TEXT
+              description: 'Raw data for node canister {#NODE.NAME}.'
+              timeout: '{$IBM.API.TIMEOUT}'
+              params: |
+                var req = new HttpRequest();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+                req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+                var authResp = req.post('{$IBM.API.URL}/auth');
+                var token = JSON.parse(authResp).token;
+                req.clearHeader();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Token: ' + token);
+                return req.post('{$IBM.API.URL}/lsnodecanister/{#NODE.ID}');
+              tags:
+                - tag: component
+                  value: raw
+                - tag: node
+                  value: '{#NODE.NAME}'
+
+            - uuid: d871f42caa184cf8aaae8aa03ed37227
+              name: 'Node [{#NODE.NAME}]: Status'
+              type: DEPENDENT
+              key: 'ibm.node.status[{#NODE.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Status of node canister {#NODE.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.status
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: 'ibm.node.get[{#NODE.ID}]'
+              tags:
+                - tag: component
+                  value: system
+                - tag: node
+                  value: '{#NODE.NAME}'
+
+          trigger_prototypes:
+            - uuid: bcc5c2ea32554c029167ee68583dd56b
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.node.status[{#NODE.ID}])<>"online"'
+              name: 'IBM FlashSystem: Node [{#NODE.NAME}] is not online'
+              opdata: 'Status: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'Node canister {#NODE.NAME} is not in online state.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: node
+                  value: '{#NODE.NAME}'
+
+          graph_prototypes: []
+
+        # ── Enclosure PSU Discovery ──
+        - uuid: d3d651f315674800959845844acd0a02
+          name: 'Enclosure PSU discovery'
+          type: SCRIPT
+          key: ibm.api.lsenclosurepsu.discovery
+          delay: '{$IBM.API.INTERVAL.DISCOVERY}'
+          description: 'Discovers enclosure power supply units via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsenclosurepsu');
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var result = [];
+                  for (var i = 0; i < data.length; i++) {
+                    result.push({
+                      "{#PSU.ENCLOSURE}": data[i].enclosure_id,
+                      "{#PSU.ID}": data[i].PSU_id,
+                      "{#PSU.STATUS}": data[i].status
+                    });
+                  }
+                  return JSON.stringify(result);
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          item_prototypes:
+            - uuid: 5d9e0d484e84463eb31822be0d3badaa
+              name: 'PSU [Enc:{#PSU.ENCLOSURE} PSU:{#PSU.ID}]: Status'
+              type: DEPENDENT
+              key: 'ibm.psu.status[{#PSU.ENCLOSURE}_{#PSU.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Status of PSU {#PSU.ID} in enclosure {#PSU.ENCLOSURE}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.enclosure_id=="{#PSU.ENCLOSURE}" && @.PSU_id=="{#PSU.ID}")].status.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: unknown
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: ibm.api.lsenclosurepsu
+              tags:
+                - tag: component
+                  value: power
+                - tag: enclosure
+                  value: '{#PSU.ENCLOSURE}'
+
+          trigger_prototypes:
+            - uuid: e71d004a55e54f1bbc57e7e71c68f3c7
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.psu.status[{#PSU.ENCLOSURE}_{#PSU.ID}])<>"online"'
+              name: 'IBM FlashSystem: PSU [Enc:{#PSU.ENCLOSURE} PSU:{#PSU.ID}] is not online'
+              opdata: 'Status: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'Power supply unit {#PSU.ID} in enclosure {#PSU.ENCLOSURE} is not online.'
+              tags:
+                - tag: scope
+                  value: availability
+
+          graph_prototypes: []
+
+        # ── Enclosure Battery Discovery ──
+        - uuid: 8de3a456adfd46039d6459996ff8a294
+          name: 'Enclosure battery discovery'
+          type: SCRIPT
+          key: ibm.api.lsenclosurebattery.discovery
+          delay: '{$IBM.API.INTERVAL.DISCOVERY}'
+          description: 'Discovers enclosure batteries via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsenclosurebattery');
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var result = [];
+                  for (var i = 0; i < data.length; i++) {
+                    result.push({
+                      "{#BAT.ENCLOSURE}": data[i].enclosure_id,
+                      "{#BAT.ID}": data[i].battery_id,
+                      "{#BAT.STATUS}": data[i].status,
+                      "{#BAT.CHARGING}": data[i].charging_status || ""
+                    });
+                  }
+                  return JSON.stringify(result);
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          item_prototypes:
+            - uuid: 08b58107ed1648b5994aa52de3f4d58b
+              name: 'Battery [Enc:{#BAT.ENCLOSURE} Bat:{#BAT.ID}]: Status'
+              type: DEPENDENT
+              key: 'ibm.battery.status[{#BAT.ENCLOSURE}_{#BAT.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Status of battery {#BAT.ID} in enclosure {#BAT.ENCLOSURE}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.enclosure_id=="{#BAT.ENCLOSURE}" && @.battery_id=="{#BAT.ID}")].status.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: unknown
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: ibm.api.lsenclosurebattery
+              tags:
+                - tag: component
+                  value: power
+                - tag: enclosure
+                  value: '{#BAT.ENCLOSURE}'
+
+            - uuid: 13a44436f16a45da9fe340ba94631c74
+              name: 'Battery [Enc:{#BAT.ENCLOSURE} Bat:{#BAT.ID}]: Charging status'
+              type: DEPENDENT
+              key: 'ibm.battery.charging[{#BAT.ENCLOSURE}_{#BAT.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Charging status of battery {#BAT.ID} in enclosure {#BAT.ENCLOSURE}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.enclosure_id=="{#BAT.ENCLOSURE}" && @.battery_id=="{#BAT.ID}")].charging_status.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: unknown
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: ibm.api.lsenclosurebattery
+              tags:
+                - tag: component
+                  value: power
+                - tag: enclosure
+                  value: '{#BAT.ENCLOSURE}'
+
+          trigger_prototypes:
+            - uuid: 6dd241324f0349288966d476a1d02785
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.battery.status[{#BAT.ENCLOSURE}_{#BAT.ID}])<>"online"'
+              name: 'IBM FlashSystem: Battery [Enc:{#BAT.ENCLOSURE} Bat:{#BAT.ID}] is not online'
+              opdata: 'Status: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'Battery {#BAT.ID} in enclosure {#BAT.ENCLOSURE} is not online.'
+              tags:
+                - tag: scope
+                  value: availability
+
+          graph_prototypes: []
+
+        # ── FC Port Discovery ──
+        - uuid: ee2f9715ec1742a5a152ba9a8382b675
+          name: 'FC port discovery'
+          type: SCRIPT
+          key: ibm.api.lsportfc.discovery
+          delay: '{$IBM.API.INTERVAL.DISCOVERY}'
+          description: 'Discovers Fibre Channel ports via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsportfc');
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var result = [];
+                  for (var i = 0; i < data.length; i++) {
+                    result.push({
+                      "{#FC.ID}": data[i].id,
+                      "{#FC.NODE}": data[i].node_name || data[i].node_id || "",
+                      "{#FC.PORT}": data[i].port_id || "",
+                      "{#FC.STATUS}": data[i].status,
+                      "{#FC.SPEED}": data[i].port_speed || ""
+                    });
+                  }
+                  return JSON.stringify(result);
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          item_prototypes:
+            - uuid: b6d75a6b7e7140a7a7e94f3415250ab5
+              name: 'FC Port [{#FC.ID}]: Status'
+              type: DEPENDENT
+              key: 'ibm.fc.status[{#FC.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Status of FC port {#FC.ID} on node {#FC.NODE}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.id=="{#FC.ID}")].status.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: unknown
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: ibm.api.lsportfc
+              tags:
+                - tag: component
+                  value: network
+                - tag: fc-port
+                  value: '{#FC.ID}'
+
+            - uuid: a894f83b3a6c4cdbb1d9803264a61c61
+              name: 'FC Port [{#FC.ID}]: Speed'
+              type: DEPENDENT
+              key: 'ibm.fc.speed[{#FC.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Configured speed of FC port {#FC.ID}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$[?(@.id=="{#FC.ID}")].port_speed.first()'
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: unknown
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 12h
+              master_item:
+                key: ibm.api.lsportfc
+              tags:
+                - tag: component
+                  value: network
+                - tag: fc-port
+                  value: '{#FC.ID}'
+
+          trigger_prototypes:
+            - uuid: b14ded7d621e443e88b54d2d718d9775
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.fc.status[{#FC.ID}])<>"active" and last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.fc.status[{#FC.ID}])<>"inactive_configured"'
+              name: 'IBM FlashSystem: FC Port [{#FC.ID}] not active'
+              opdata: 'Status: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'FC port {#FC.ID} on node {#FC.NODE} is not in expected state.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: fc-port
+                  value: '{#FC.ID}'
+
+          graph_prototypes: []
+
+        # ── Volume (VDisk) Discovery ──
+        - uuid: e42f30847de9455fa9762593efaa9d11
+          name: 'Volume discovery'
+          type: SCRIPT
+          key: ibm.api.lsvdisk.discovery
+          delay: '{$IBM.API.INTERVAL.DISCOVERY}'
+          description: 'Discovers volumes (vdisks) via REST API.'
+          timeout: '{$IBM.API.TIMEOUT}'
+          params: |
+            var req = new HttpRequest();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+            req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+            var authResp = req.post('{$IBM.API.URL}/auth');
+            var token = JSON.parse(authResp).token;
+            req.clearHeader();
+            req.addHeader('Content-Type: application/json');
+            req.addHeader('X-Auth-Token: ' + token);
+            return req.post('{$IBM.API.URL}/lsvdisk');
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data = JSON.parse(value);
+                  var result = [];
+                  for (var i = 0; i < data.length; i++) {
+                    result.push({
+                      "{#VOL.ID}": data[i].id,
+                      "{#VOL.NAME}": data[i].name,
+                      "{#VOL.STATUS}": data[i].status,
+                      "{#VOL.POOL}": data[i].mdisk_grp_name || ""
+                    });
+                  }
+                  return JSON.stringify(result);
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 6h
+          filter:
+            evaltype: AND
+            conditions:
+              - macro: '{#VOL.NAME}'
+                value: '{$IBM.VOLUME.NAME.MATCHES}'
+                formulaid: A
+              - macro: '{#VOL.NAME}'
+                value: '{$IBM.VOLUME.NAME.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+                formulaid: B
+          item_prototypes:
+            - uuid: 16ad2c02d2274d5cae58fd2a56ce5c58
+              name: 'Volume [{#VOL.NAME}]: Get data'
+              type: SCRIPT
+              key: 'ibm.volume.get[{#VOL.ID}]'
+              delay: '{$IBM.API.INTERVAL}'
+              history: '0'
+              trends: '0'
+              value_type: TEXT
+              description: 'Raw data for volume {#VOL.NAME}.'
+              timeout: '{$IBM.API.TIMEOUT}'
+              params: |
+                var req = new HttpRequest();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Username: {$IBM.API.USER}');
+                req.addHeader('X-Auth-Password: {$IBM.API.PASSWORD}');
+                var authResp = req.post('{$IBM.API.URL}/auth');
+                var token = JSON.parse(authResp).token;
+                req.clearHeader();
+                req.addHeader('Content-Type: application/json');
+                req.addHeader('X-Auth-Token: ' + token);
+                return req.post('{$IBM.API.URL}/lsvdisk/{#VOL.ID}');
+              tags:
+                - tag: component
+                  value: raw
+                - tag: volume
+                  value: '{#VOL.NAME}'
+
+            - uuid: 2bc29dee341c4abeb8bf447097e056ca
+              name: 'Volume [{#VOL.NAME}]: Status'
+              type: DEPENDENT
+              key: 'ibm.volume.status[{#VOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Status of volume {#VOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.status
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: 'ibm.volume.get[{#VOL.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: volume
+                  value: '{#VOL.NAME}'
+
+            - uuid: 3890d563cbd942ebbb05c46a434f1ef3
+              name: 'Volume [{#VOL.NAME}]: Capacity'
+              type: DEPENDENT
+              key: 'ibm.volume.capacity[{#VOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: B
+              description: 'Virtual capacity of volume {#VOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.capacity
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                      if (!m) return 0;
+                      var n = parseFloat(m[1]);
+                      var u = m[2].toUpperCase();
+                      var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                      return Math.round(n * (mul[u] || 1));
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 12h
+              master_item:
+                key: 'ibm.volume.get[{#VOL.ID}]'
+              tags:
+                - tag: component
+                  value: capacity
+                - tag: volume
+                  value: '{#VOL.NAME}'
+
+            - uuid: d1e0ea4290a9448ea3026bd1c1fc255e
+              name: 'Volume [{#VOL.NAME}]: Used capacity'
+              type: DEPENDENT
+              key: 'ibm.volume.used_capacity[{#VOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: 365d
+              value_type: FLOAT
+              units: B
+              description: 'Used (written) capacity of volume {#VOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.used_capacity
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var m = value.match(/^([\d.]+)\s*(TB|GB|MB|PB)/i);
+                      if (!m) return 0;
+                      var n = parseFloat(m[1]);
+                      var u = m[2].toUpperCase();
+                      var mul = {'MB':1048576,'GB':1073741824,'TB':1099511627776,'PB':1125899906842624};
+                      return Math.round(n * (mul[u] || 1));
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: 'ibm.volume.get[{#VOL.ID}]'
+              tags:
+                - tag: component
+                  value: capacity
+                - tag: volume
+                  value: '{#VOL.NAME}'
+
+            - uuid: 8646548b419040b8bf48459e07d840f1
+              name: 'Volume [{#VOL.NAME}]: Pool'
+              type: DEPENDENT
+              key: 'ibm.volume.pool[{#VOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'Storage pool name for volume {#VOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.mdisk_grp_name
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: ''
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 12h
+              master_item:
+                key: 'ibm.volume.get[{#VOL.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: volume
+                  value: '{#VOL.NAME}'
+
+            - uuid: 4848d6475fe446599c4afa4afd658278
+              name: 'Volume [{#VOL.NAME}]: IO group'
+              type: DEPENDENT
+              key: 'ibm.volume.io_group[{#VOL.ID}]'
+              delay: '0'
+              history: 7d
+              trends: '0'
+              value_type: CHAR
+              description: 'IO group name for volume {#VOL.NAME}.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.IO_group_name
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: ''
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 12h
+              master_item:
+                key: 'ibm.volume.get[{#VOL.ID}]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: volume
+                  value: '{#VOL.NAME}'
+
+          trigger_prototypes:
+            - uuid: 76e7caa0fcf6447fb35bb7789b00cefd
+              expression: 'last(/IBM FlashSystem 5300 by REST API and SNMP/ibm.volume.status[{#VOL.ID}])<>"online"'
+              name: 'IBM FlashSystem: Volume [{#VOL.NAME}] is not online'
+              opdata: 'Status: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              description: 'Volume {#VOL.NAME} is not in online state.'
+              tags:
+                - tag: scope
+                  value: availability
+                - tag: volume
+                  value: '{#VOL.NAME}'
+
+          graph_prototypes: []
+
+      # ──────────────────────────────────────────────
+      #  DASHBOARDS
+      # ──────────────────────────────────────────────
+      dashboards:
+        - uuid: 7c0daaf492d943b9b35cbb8dc2693afb
+          name: 'IBM FlashSystem 5300 Overview'
+          auto_start: 'YES'
+          pages:
+            - name: Overview
+              widgets:
+                # ── Row 1: System Info ──
+                - type: item
+                  name: 'System Name'
+                  x: '0'
+                  'y': '0'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.name
+                - type: item
+                  name: 'Product Name'
+                  x: '18'
+                  'y': '0'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.product_name
+                - type: item
+                  name: 'Code Level'
+                  x: '36'
+                  'y': '0'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.code_level
+                - type: item
+                  name: 'Serial Number'
+                  x: '54'
+                  'y': '0'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.serial_number
+
+                # ── Row 2: Capacity Gauges ──
+                - type: item
+                  name: 'Total Capacity'
+                  x: '0'
+                  'y': '3'
+                  width: '24'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.total_mdisk_capacity
+                - type: item
+                  name: 'Used Capacity'
+                  x: '24'
+                  'y': '3'
+                  width: '24'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.total_used_capacity
+                - type: item
+                  name: 'Free Capacity'
+                  x: '48'
+                  'y': '3'
+                  width: '24'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.total_free_capacity
+
+                # ── Row 3: CPU & Cache & Temp & Power ──
+                - type: item
+                  name: 'CPU %'
+                  x: '0'
+                  'y': '6'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.cpu_pc
+                - type: item
+                  name: 'Write Cache %'
+                  x: '18'
+                  'y': '6'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.write_cache_pc
+                - type: item
+                  name: 'Temperature'
+                  x: '36'
+                  'y': '6'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.temp_c
+                - type: item
+                  name: 'Power (W)'
+                  x: '54'
+                  'y': '6'
+                  width: '18'
+                  height: '3'
+                  fields:
+                    - type: INTEGER
+                      name: show.1
+                      value: '1'
+                    - type: INTEGER
+                      name: show.2
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.power_w
+
+                # ── Row 4: IOPS Graph ──
+                - type: graph_classic
+                  name: 'Volume IOPS'
+                  x: '0'
+                  'y': '9'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: source_type
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.vdisk_r_io
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.vdisk_w_io
+
+                # ── Row 4: Throughput Graph ──
+                - type: graph_classic
+                  name: 'Volume Throughput'
+                  x: '36'
+                  'y': '9'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: source_type
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.vdisk_r_mb
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.vdisk_w_mb
+
+                # ── Row 5: Latency Graph ──
+                - type: graph_classic
+                  name: 'Volume Latency'
+                  x: '0'
+                  'y': '14'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: source_type
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.vdisk_r_ms
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.vdisk_w_ms
+
+                # ── Row 5: FC & Drive IOPS ──
+                - type: graph_classic
+                  name: 'FC & Drive IOPS'
+                  x: '36'
+                  'y': '14'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: source_type
+                      value: '1'
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.fc_io
+                    - type: ITEM
+                      name: itemid
+                      value:
+                        host: 'IBM FlashSystem 5300 by REST API and SNMP'
+                        key: ibm.system.drive_io
+
+                # ── Row 6: Problems ──
+                - type: problems
+                  name: 'Current Problems'
+                  x: '0'
+                  'y': '19'
+                  width: '72'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: severities
+                      value: '4'
+                    - type: INTEGER
+                      name: severities
+                      value: '3'
+                    - type: INTEGER
+                      name: severities
+                      value: '2'
+
+      # ──────────────────────────────────────────────
+      #  TAGS
+      # ──────────────────────────────────────────────
+      tags:
+        - tag: class
+          value: storage
+        - tag: target
+          value: ibm-flashsystem-5300
+
+      # ──────────────────────────────────────────────
+      #  VALUE MAPS
+      # ──────────────────────────────────────────────
+      valuemaps:
+        - uuid: 44a240f15b934e1dbd53f3b7a7806f85
+          name: 'Service state'
+          mappings:
+            - value: '0'
+              newvalue: Down
+            - value: '1'
+              newvalue: Up
+
+        - uuid: 32bfff8dc7b04234995e005b6d00aed5
+          name: 'Component status'
+          mappings:
+            - value: online
+              newvalue: Online
+            - value: offline
+              newvalue: Offline
+            - value: degraded
+              newvalue: Degraded
+            - type: DEFAULT
+              newvalue: Unknown
