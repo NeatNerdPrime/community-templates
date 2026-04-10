@@ -412,9 +412,9 @@ zabbix_export:
         - tag: class
           value: hardware
         - tag: target
-          value: dell
+          value: hp
         - tag: target
-          value: idrac
+          value: superdome
       valuemaps:
         - uuid: fc8d587ca46f4b31b8aec6d2ebf7be66
           name: 'HP-MIB::PSUStatusEnum'
