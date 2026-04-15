@@ -1,0 +1,2929 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: 883349b89d37470b8db4ee07483559d4
+      template: 'PowerDNS Authoritative Server'
+      name: 'PowerDNS Authoritative Server'
+      description: |
+        Zabbix template to monitor PowerDNS Authoritative Server via its Prometheus metrics endpoint using Zabbix Agent 2.
+
+        Collects all metrics through a single master item and extracts individual values with Prometheus preprocessing.
+
+        Source: https://github.com/zabbix/community-templates/
+
+        Author: Joël de Jager
+      groups:
+        - name: Templates/Applications
+      items:
+        # ── Process ────────────────────────────────────────────────────
+        - uuid: 4346050f3f514c93bfea310aabc3a3d4
+          name: 'pdns_auth Process'
+          type: ZABBIX_ACTIVE
+          key: 'proc.num[,,,pdns_server]'
+          delay: 60s
+          description: 'Number of running pdns_server processes.'
+          valuemap:
+            name: 'Service Status'
+          triggers:
+            - uuid: d61d827b1b294324beb79497c3efabf7
+              expression: 'last(/PowerDNS Authoritative Server/proc.num[,,,pdns_server])=0'
+              name: 'pdns_auth process not running'
+              priority: HIGH
+        # ── Master item ────────────────────────────────────────────────
+        - uuid: 8b6b7f8e318b41978f2117d3425532e0
+          name: 'Prometheus Metrics'
+          type: ZABBIX_ACTIVE
+          key: pdns.auth.metrics
+          delay: 30s
+          history: 0d
+          trends: 0d
+          value_type: TEXT
+          description: 'Raw Prometheus metrics from the PowerDNS Authoritative Server web API.'
+          tags:
+            - tag: component
+              value: raw
+        # ── Queries & Responses ────────────────────────────────────────
+        - uuid: 408a4c9ff63f4d9db8a2b67aca614926
+          name: 'Backend Queries'
+          type: DEPENDENT
+          key: pdns.auth.backend.queries
+          value_type: FLOAT
+          description: 'Number of queries sent to the backend(s).'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_backend_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 999a615ab97c41a784233a413389c5c8
+          name: 'UDP Queries'
+          type: DEPENDENT
+          key: pdns.auth.udp.queries
+          value_type: FLOAT
+          description: 'Number of UDP queries received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 1c62131e6e684665a71976f3744d40fe
+          name: 'TCP Queries'
+          type: DEPENDENT
+          key: pdns.auth.tcp.queries
+          value_type: FLOAT
+          description: 'Number of TCP queries received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: d950efb2a46b46429cc85dce276f1a58
+          name: 'UDP Answers'
+          type: DEPENDENT
+          key: pdns.auth.udp.answers
+          value_type: FLOAT
+          description: 'Number of answers sent out over UDP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: b7d66ee615264e1f9dd0b87a71f7cfc8
+          name: 'TCP Answers'
+          type: DEPENDENT
+          key: pdns.auth.tcp.answers
+          value_type: FLOAT
+          description: 'Number of answers sent out over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: e26f2ac59201444caecc311b14bd099f
+          name: 'UDP Answers Bytes'
+          type: DEPENDENT
+          key: pdns.auth.udp.answers.bytes
+          value_type: FLOAT
+          units: B
+          description: 'Total size of answers sent out over UDP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_answers_bytes
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: c11bc434c85b46a58966df6b456f7f72
+          name: 'TCP Answers Bytes'
+          type: DEPENDENT
+          key: pdns.auth.tcp.answers.bytes
+          value_type: FLOAT
+          units: B
+          description: 'Total size of answers sent out over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp_answers_bytes
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 47567d1dd4da4d77912a3778e7282e5b
+          name: 'RD Queries'
+          type: DEPENDENT
+          key: pdns.auth.rd.queries
+          value_type: FLOAT
+          description: 'Number of recursion desired questions.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_rd_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 4c75733fc1e142ebbcd19d36c69ff73a
+          name: 'Corrupt Packets'
+          type: DEPENDENT
+          key: pdns.auth.corrupt.packets
+          value_type: FLOAT
+          description: 'Number of corrupt packets received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_corrupt_packets
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: c23fe9828b9849939125ff7de7796733
+          name: 'Timed Out Packets'
+          type: DEPENDENT
+          key: pdns.auth.timedout.packets
+          value_type: FLOAT
+          description: 'Number of packets which were not answered within the timeout.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_timedout_packets
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 96dc0ab9b05c42349c68bfcdf57ae4cc
+          name: 'Overload Drops'
+          type: DEPENDENT
+          key: pdns.auth.overload.drops
+          value_type: FLOAT
+          description: 'Queries dropped because backends overloaded.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_overload_drops
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+          triggers:
+            - uuid: 33aad1ed3ba246ec8462d39796dd37ef
+              expression: 'last(/PowerDNS Authoritative Server/pdns.auth.overload.drops)>0'
+              name: 'Queries dropped — backends overloaded'
+              priority: HIGH
+        # ── Response codes ─────────────────────────────────────────────
+        - uuid: 5bcb16a51b614c26ba4e7c524a7bfe78
+          name: 'NoError Packets'
+          type: DEPENDENT
+          key: pdns.auth.noerror.packets
+          value_type: FLOAT
+          description: 'Number of times a NOERROR packet was sent out.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_noerror_packets
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: responses
+        - uuid: cc9f12bc8e4248d9ae9f4f3883c1686f
+          name: 'NXDomain Packets'
+          type: DEPENDENT
+          key: pdns.auth.nxdomain.packets
+          value_type: FLOAT
+          description: 'Number of times an NXDOMAIN packet was sent out.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_nxdomain_packets
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: responses
+        - uuid: d7349bfa9a524883940217bfdb81bb27
+          name: 'ServFail Packets'
+          type: DEPENDENT
+          key: pdns.auth.servfail.packets
+          value_type: FLOAT
+          description: 'Number of times a server-failed packet was sent out.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_servfail_packets
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: responses
+        - uuid: 9967b96f3a9c4bef96d91f99001aff94
+          name: 'Unauth Packets'
+          type: DEPENDENT
+          key: pdns.auth.unauth.packets
+          value_type: FLOAT
+          description: 'Number of times a zone we are not authoritative for was queried.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_unauth_packets
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: responses
+        # ── IPv4/IPv6 breakdown ────────────────────────────────────────
+        - uuid: c911079f0eda412cbe095b597e0b4fe7
+          name: 'UDP4 Queries'
+          type: DEPENDENT
+          key: pdns.auth.udp4.queries
+          value_type: FLOAT
+          description: 'Number of IPv4 UDP queries received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp4_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 2bf1898be11f4cfc810a87fff238ba8c
+          name: 'UDP6 Queries'
+          type: DEPENDENT
+          key: pdns.auth.udp6.queries
+          value_type: FLOAT
+          description: 'Number of IPv6 UDP queries received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 054ca323e55847809a4f09d2e052ecb9
+          name: 'UDP4 Answers'
+          type: DEPENDENT
+          key: pdns.auth.udp4.answers
+          value_type: FLOAT
+          description: 'Number of IPv4 answers sent out over UDP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp4_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 553d5e1199444ab6af3903a956f1b704
+          name: 'UDP6 Answers'
+          type: DEPENDENT
+          key: pdns.auth.udp6.answers
+          value_type: FLOAT
+          description: 'Number of IPv6 answers sent out over UDP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: d2b0da51497f4075ba5aed1d864e28f5
+          name: 'TCP4 Queries'
+          type: DEPENDENT
+          key: pdns.auth.tcp4.queries
+          value_type: FLOAT
+          description: 'Number of IPv4 TCP queries received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp4_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: ca36bc7fc53e4a1faef18d99d6f22153
+          name: 'TCP6 Queries'
+          type: DEPENDENT
+          key: pdns.auth.tcp6.queries
+          value_type: FLOAT
+          description: 'Number of IPv6 TCP queries received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp6_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: c4e64696e8c340c48a6b5701431ef7e1
+          name: 'TCP4 Answers'
+          type: DEPENDENT
+          key: pdns.auth.tcp4.answers
+          value_type: FLOAT
+          description: 'Number of IPv4 answers sent out over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp4_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: d429706418c140e6852079be6ab59228
+          name: 'TCP6 Answers'
+          type: DEPENDENT
+          key: pdns.auth.tcp6.answers
+          value_type: FLOAT
+          description: 'Number of IPv6 answers sent out over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp6_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 01136da9a49b481084c57a5f1e40d081
+          name: 'UDP4 Answers Bytes'
+          type: DEPENDENT
+          key: pdns.auth.udp4.answers.bytes
+          value_type: FLOAT
+          units: B
+          description: 'Total size of answers sent out over UDPv4.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp4_answers_bytes
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 2e6bae786f9f4862908a3b9e21063f67
+          name: 'UDP6 Answers Bytes'
+          type: DEPENDENT
+          key: pdns.auth.udp6.answers.bytes
+          value_type: FLOAT
+          units: B
+          description: 'Total size of answers sent out over UDPv6.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_answers_bytes
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 0471d75fa1ed41ff99e726a56255e9bf
+          name: 'TCP4 Answers Bytes'
+          type: DEPENDENT
+          key: pdns.auth.tcp4.answers.bytes
+          value_type: FLOAT
+          units: B
+          description: 'Total size of answers sent out over TCPv4.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp4_answers_bytes
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: d68e168097ef48c482f67f752d8d91f3
+          name: 'TCP6 Answers Bytes'
+          type: DEPENDENT
+          key: pdns.auth.tcp6.answers.bytes
+          value_type: FLOAT
+          units: B
+          description: 'Total size of answers sent out over TCPv6.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp6_answers_bytes
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        # ── EDNS / Cookies / DO ────────────────────────────────────────
+        - uuid: 2204826551364733b352d5b78c3b2a9b
+          name: 'UDP Cookie Queries'
+          type: DEPENDENT
+          key: pdns.auth.udp.cookie.queries
+          value_type: FLOAT
+          description: 'Number of UDP queries received with the COOKIE EDNS option.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_cookie_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 12bf3b94ac7b412392ce70d3c8804f10
+          name: 'TCP Cookie Queries'
+          type: DEPENDENT
+          key: pdns.auth.tcp.cookie.queries
+          value_type: FLOAT
+          description: 'Number of TCP queries received with the COOKIE option.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_tcp_cookie_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 1badd21103b0432babf8d03c892ae2c4
+          name: 'UDP DO Queries'
+          type: DEPENDENT
+          key: pdns.auth.udp.do.queries
+          value_type: FLOAT
+          description: 'Number of UDP queries received with DO bit.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_do_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: queries
+        # ── DNS Update ─────────────────────────────────────────────────
+        - uuid: a9b6508da64d422bba9b2f20c163e694
+          name: 'DNS Update Queries'
+          type: DEPENDENT
+          key: pdns.auth.dnsupdate.queries
+          value_type: FLOAT
+          description: 'DNS update packets received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_dnsupdate_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: dnsupdate
+        - uuid: ea6f8a06918349b8aefb135c184e0c96
+          name: 'DNS Update Answers'
+          type: DEPENDENT
+          key: pdns.auth.dnsupdate.answers
+          value_type: FLOAT
+          description: 'DNS update packets successfully answered.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_dnsupdate_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: dnsupdate
+        - uuid: cfefa79082fb424bb76ba84115857397
+          name: 'DNS Update Changes'
+          type: DEPENDENT
+          key: pdns.auth.dnsupdate.changes
+          value_type: FLOAT
+          description: 'DNS update changes to records in total.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_dnsupdate_changes
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: dnsupdate
+        - uuid: 5c63287e4fee469e9a964507353c9a5d
+          name: 'DNS Update Refused'
+          type: DEPENDENT
+          key: pdns.auth.dnsupdate.refused
+          value_type: FLOAT
+          description: 'DNS update packets that are refused.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_dnsupdate_refused
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: dnsupdate
+        # ── Notifications ──────────────────────────────────────────────
+        - uuid: 5b7392927b8b4035a267359f9a27addc
+          name: 'Incoming Notifications'
+          type: DEPENDENT
+          key: pdns.auth.incoming.notifications
+          value_type: FLOAT
+          description: 'NOTIFY packets received.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_incoming_notifications
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: zone
+        # ── Recursion ──────────────────────────────────────────────────
+        - uuid: 53b19fab6fc6454d961f6848da770425
+          name: 'Recursing Answers'
+          type: DEPENDENT
+          key: pdns.auth.recursing.answers
+          value_type: FLOAT
+          description: 'Number of recursive answers sent out.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_recursing_answers
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: recursion
+        - uuid: ff35ebb874fc445297b5118f65aa335e
+          name: 'Recursing Questions'
+          type: DEPENDENT
+          key: pdns.auth.recursing.questions
+          value_type: FLOAT
+          description: 'Number of questions sent to recursor.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_recursing_questions
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: recursion
+        - uuid: 3e1086291de54fa48b76dffa91fc813e
+          name: 'Recursion Unanswered'
+          type: DEPENDENT
+          key: pdns.auth.recursion.unanswered
+          value_type: FLOAT
+          description: 'Number of packets unanswered by configured recursor.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_recursion_unanswered
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: recursion
+        # ── Cache ──────────────────────────────────────────────────────
+        - uuid: 33070f9d70c84f7ab7618a7282ede33d
+          name: 'Packet Cache Hits'
+          type: DEPENDENT
+          key: pdns.auth.packetcache.hit
+          value_type: FLOAT
+          description: 'Number of hits on the packet cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_packetcache_hit
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 0baefc6c30584d8092fba7adc054e450
+          name: 'Packet Cache Misses'
+          type: DEPENDENT
+          key: pdns.auth.packetcache.miss
+          value_type: FLOAT
+          description: 'Number of misses on the packet cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_packetcache_miss
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 00e87f99d47b4db59617bb180623438e
+          name: 'Packet Cache Size'
+          type: DEPENDENT
+          key: pdns.auth.packetcache.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the packet cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_packetcache_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: be933e4a4fca4e89a0839de9fd157e2f
+          name: 'Query Cache Hits'
+          type: DEPENDENT
+          key: pdns.auth.query.cache.hit
+          value_type: FLOAT
+          description: 'Number of hits on the query cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_query_cache_hit
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 3f3f92953eb940b99facba51f50a5701
+          name: 'Query Cache Misses'
+          type: DEPENDENT
+          key: pdns.auth.query.cache.miss
+          value_type: FLOAT
+          description: 'Number of misses on the query cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_query_cache_miss
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: d9d7a2bc0e4d479a8daa26433e4c7099
+          name: 'Query Cache Size'
+          type: DEPENDENT
+          key: pdns.auth.query.cache.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the query cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_query_cache_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 1c12dc6a10c34bc78677af3806bd5787
+          name: 'Zone Cache Hits'
+          type: DEPENDENT
+          key: pdns.auth.zone.cache.hit
+          value_type: FLOAT
+          description: 'Number of zone cache hits.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_zone_cache_hit
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 54e8d59f217a423987ee42cb879b3bdb
+          name: 'Zone Cache Misses'
+          type: DEPENDENT
+          key: pdns.auth.zone.cache.miss
+          value_type: FLOAT
+          description: 'Number of zone cache misses.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_zone_cache_miss
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: ebde186443c04fccad35d15782147850
+          name: 'Zone Cache Size'
+          type: DEPENDENT
+          key: pdns.auth.zone.cache.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the zone cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_zone_cache_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: fe5faac7dc904776a8cc7cb7cfc297d4
+          name: 'Deferred Cache Inserts'
+          type: DEPENDENT
+          key: pdns.auth.deferred.cache.inserts
+          value_type: FLOAT
+          description: 'Amount of cache inserts that were deferred because of maintenance.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_deferred_cache_inserts
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 6fee6d8b9ffe48f2ac081977812f31c7
+          name: 'Deferred Cache Lookups'
+          type: DEPENDENT
+          key: pdns.auth.deferred.cache.lookup
+          value_type: FLOAT
+          description: 'Amount of cache lookups that were deferred because of maintenance.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_deferred_cache_lookup
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: d3df1bf063804355a08c24ddabc7275e
+          name: 'Deferred Packetcache Inserts'
+          type: DEPENDENT
+          key: pdns.auth.deferred.packetcache.inserts
+          value_type: FLOAT
+          description: 'Amount of packet cache inserts that were deferred because of maintenance.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_deferred_packetcache_inserts
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 75d78a7c40764ba3bf626e2dd3fb6db7
+          name: 'Deferred Packetcache Lookups'
+          type: DEPENDENT
+          key: pdns.auth.deferred.packetcache.lookup
+          value_type: FLOAT
+          description: 'Amount of packet cache lookups that were deferred because of maintenance.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_deferred_packetcache_lookup
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        # ── DNSSEC ─────────────────────────────────────────────────────
+        - uuid: 63ed5f1260a94dc1a0e917f6e8ed5a19
+          name: 'DNSSEC Signatures'
+          type: DEPENDENT
+          key: pdns.auth.signatures
+          value_type: FLOAT
+          description: 'Number of DNSSEC signatures made.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_signatures
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: dnssec
+        - uuid: 55a9592d849543be81968b54cc272374
+          name: 'Key Cache Size'
+          type: DEPENDENT
+          key: pdns.auth.key.cache.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the key cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_key_cache_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: dnssec
+        - uuid: 4015099de93d41e2aad8f2d14cb91db0
+          name: 'Signature Cache Size'
+          type: DEPENDENT
+          key: pdns.auth.signature.cache.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the signature cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_signature_cache_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: dnssec
+        - uuid: ae4ef9c2167c4c208deed4588aa8a403
+          name: 'Meta Cache Size'
+          type: DEPENDENT
+          key: pdns.auth.meta.cache.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the metadata cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_meta_cache_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: cache
+        # ── Latency ────────────────────────────────────────────────────
+        - uuid: 14ed238b22564d6788287684135b2040
+          name: 'Query Latency'
+          type: DEPENDENT
+          key: pdns.auth.latency
+          value_type: UNSIGNED
+          units: µs
+          description: 'Average number of microseconds needed to answer a question.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_latency
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 397f7ce2945b41c89987650029f2dcd0
+          name: 'Backend Latency'
+          type: DEPENDENT
+          key: pdns.auth.backend.latency
+          value_type: UNSIGNED
+          units: µs
+          description: 'Average number of microseconds needed for a backend lookup.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_backend_latency
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: c2af337288e44860bd572d2ccb6ad9cd
+          name: 'Cache Latency'
+          type: DEPENDENT
+          key: pdns.auth.cache.latency
+          value_type: UNSIGNED
+          units: µs
+          description: 'Average number of microseconds needed for a packet cache lookup.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_cache_latency
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: a1e08fb1ddc0446cb01cea963fcb1d66
+          name: 'Receive Latency'
+          type: DEPENDENT
+          key: pdns.auth.receive.latency
+          value_type: UNSIGNED
+          units: µs
+          description: 'Average number of microseconds needed to receive a query.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_receive_latency
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 9264b2bf3f7d457a9dabd961bf1605b0
+          name: 'Send Latency'
+          type: DEPENDENT
+          key: pdns.auth.send.latency
+          value_type: UNSIGNED
+          units: µs
+          description: 'Average number of microseconds needed to send the answer.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_send_latency
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: latency
+        # ── Performance & Resources ────────────────────────────────────
+        - uuid: 02464e413c074b40a2ef2802f6fc389e
+          name: 'CPU User (ms)'
+          type: DEPENDENT
+          key: pdns.auth.cpu.user.msec
+          value_type: FLOAT
+          units: ms
+          description: 'Number of msec spent in user time.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_user_msec
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: dc5cb68006c04609bd2869ec460856b7
+          name: 'CPU System (ms)'
+          type: DEPENDENT
+          key: pdns.auth.cpu.sys.msec
+          value_type: FLOAT
+          units: ms
+          description: 'Number of msec spent in system time.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_sys_msec
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 3daeb50ea1d94863ace9d7c831bd6b08
+          name: 'CPU I/O Wait'
+          type: DEPENDENT
+          key: pdns.auth.cpu.iowait
+          value_type: FLOAT
+          description: 'Time spent waiting for I/O to complete by the whole system, in units of USER_HZ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_cpu_iowait
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 35a50e9a3231461bad9f52bc5fa770e7
+          name: 'CPU Steal'
+          type: DEPENDENT
+          key: pdns.auth.cpu.steal
+          value_type: FLOAT
+          description: 'Stolen time spent in other operating systems when running in a virtualized environment, in units of USER_HZ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_cpu_steal
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 3cb7adceb91a412288bf2e60be7237ea
+          name: 'Memory Usage'
+          type: DEPENDENT
+          key: pdns.auth.memory.usage
+          value_type: UNSIGNED
+          units: B
+          description: 'Actual unique use of memory in bytes (approx).'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_real_memory_usage
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: resources
+          triggers:
+            - uuid: 47e921d5969b4e9892756d652e15a010
+              expression: 'last(/PowerDNS Authoritative Server/pdns.auth.memory.usage)>1073741824'
+              name: 'High memory usage (>1 GB)'
+              priority: WARNING
+        - uuid: 28bbd3852d0c4714a042941176d85058
+          name: 'File Descriptors'
+          type: DEPENDENT
+          key: pdns.auth.fd.usage
+          value_type: UNSIGNED
+          description: 'Number of open file descriptors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_fd_usage
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: resources
+        - uuid: 347e69684ca04d7098757503161c7b52
+          name: 'Open TCP Connections'
+          type: DEPENDENT
+          key: pdns.auth.open.tcp.connections
+          value_type: UNSIGNED
+          description: 'Number of currently open TCP connections.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_open_tcp_connections
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: resources
+        - uuid: c563cc1c7b9542b2b14bc24d9eb5abef
+          name: 'Queue Size'
+          type: DEPENDENT
+          key: pdns.auth.qsize.q
+          value_type: UNSIGNED
+          description: 'Number of questions waiting for database attention.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_qsize_q
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: resources
+        - uuid: d35fdae6af904ca49396d9aec4cea642
+          name: 'Uptime'
+          type: DEPENDENT
+          key: pdns.auth.uptime
+          value_type: UNSIGNED
+          units: s
+          description: 'Uptime of process in seconds.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_uptime
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: resources
+        - uuid: 7ac1a92f9e7843c599e51313637afcd7
+          name: 'XFR Queue'
+          type: DEPENDENT
+          key: pdns.auth.xfr.queue
+          value_type: UNSIGNED
+          description: 'Size of the queue of zones to be XFRd.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_xfr_queue
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: zone
+        # ── Security & Version ─────────────────────────────────────────
+        - uuid: 99a5a90debc54476bea501a26403fffd
+          name: 'Security Status'
+          type: DEPENDENT
+          key: pdns.auth.security.status
+          value_type: UNSIGNED
+          description: 'Security status based on regular polling. 0=OK, 1=upgrade recommended, 2=upgrade mandatory, 3=upgrade critical.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_security_status
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: security
+          triggers:
+            - uuid: 4a13c53754ed4159998b4ebb8fd4db08
+              expression: 'last(/PowerDNS Authoritative Server/pdns.auth.security.status)>=2'
+              name: 'pdns_auth upgrade recommended or required'
+              priority: WARNING
+        - uuid: 213496a19c9f44a6bc48144aa7434fba
+          name: 'Version'
+          type: DEPENDENT
+          key: pdns.auth.version
+          value_type: CHAR
+          description: 'PowerDNS Authoritative Server version.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_info
+                - label
+                - version
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: info
+        # ── Network Errors ─────────────────────────────────────────────
+        - uuid: c14317966a0246eea5712b82465abc3d
+          name: 'UDP In Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp.in.errors
+          value_type: FLOAT
+          description: 'UDP in errors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_in_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 6010e6b897e64bfda9ddfe365c5085e4
+          name: 'UDP NoPort Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp.noport.errors
+          value_type: FLOAT
+          description: 'UDP noport errors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_noport_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 9cde719931144b92bc2075bc7d8cd450
+          name: 'UDP RecvBuf Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp.recvbuf.errors
+          value_type: FLOAT
+          description: 'UDP recvbuf errors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_recvbuf_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: fb7966ad8a6d41a3a304f97582026583
+          name: 'UDP SndBuf Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp.sndbuf.errors
+          value_type: FLOAT
+          description: 'UDP sndbuf errors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_sndbuf_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: e91304a622bf4defa3e0f9f0d422d38a
+          name: 'UDP In Checksum Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp.in.csum.errors
+          value_type: FLOAT
+          description: 'UDP in checksum errors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp_in_csum_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 621f63f2707e4130981da22b63114090
+          name: 'UDP6 In Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp6.in.errors
+          value_type: FLOAT
+          description: 'UDP in errors over IPv6.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_in_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 0dcbd9bf688d4e0d8a273851447b192c
+          name: 'UDP6 NoPort Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp6.noport.errors
+          value_type: FLOAT
+          description: 'UDP noport errors over IPv6.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_noport_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 43a43dbed3bf49a29d37f1093fdead58
+          name: 'UDP6 RecvBuf Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp6.recvbuf.errors
+          value_type: FLOAT
+          description: 'UDP recvbuf errors over IPv6.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_recvbuf_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 15d59f7e77034891888cfd695e58f48e
+          name: 'UDP6 SndBuf Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp6.sndbuf.errors
+          value_type: FLOAT
+          description: 'UDP sndbuf errors over IPv6.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_sndbuf_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 6b73be5156cc4121a63c8ce8f137530b
+          name: 'UDP6 In Checksum Errors'
+          type: DEPENDENT
+          key: pdns.auth.udp6.in.csum.errors
+          value_type: FLOAT
+          description: 'UDP in checksum errors over IPv6.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_udp6_in_csum_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: errors
+        # ── Ring Buffers (sizes only) ──────────────────────────────────
+        - uuid: d494781b4dc94074b67fde9ee79c867b
+          name: 'Ring: Queries Size'
+          type: DEPENDENT
+          key: pdns.auth.ring.queries.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the queries ring.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_ring_queries_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: ring
+        - uuid: 1d2cf4f48dc544e2aed5ee0f60c674d2
+          name: 'Ring: Log Messages Size'
+          type: DEPENDENT
+          key: pdns.auth.ring.logmessages.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the logmessages ring.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_ring_logmessages_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: ring
+        - uuid: 74ca7df7af434041b76988a8e1b7505a
+          name: 'Ring: ServFail Queries Size'
+          type: DEPENDENT
+          key: pdns.auth.ring.servfail.queries.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the servfail-queries ring.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_ring_servfail_queries_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: ring
+        - uuid: 4eae47ccbbec4c2eb6d13586bbfcb646
+          name: 'Ring: Remotes Corrupt Size'
+          type: DEPENDENT
+          key: pdns.auth.ring.remotes.corrupt.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the remotes-corrupt ring.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_ring_remotes_corrupt_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: ring
+        - uuid: bb2ea8ee1ab348bdb60e0a4575e32915
+          name: 'Ring: Unauth Queries Size'
+          type: DEPENDENT
+          key: pdns.auth.ring.unauth.queries.size
+          value_type: UNSIGNED
+          description: 'Number of entries in the unauth-queries ring.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - pdns_auth_ring_unauth_queries_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.auth.metrics
+          tags:
+            - tag: component
+              value: ring
+      # ── Dashboards ──────────────────────────────────────────────────
+      dashboards:
+        - uuid: 3be0812ba97543d9bb11c3eff16b2e82
+          name: 'PowerDNS Authoritative Server'
+          auto_start: 'NO'
+          pages:
+            - name: Overview
+              widgets:
+                - type: item
+                  name: Status
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Status
+                    - type: STRING
+                      name: desc_color
+                      value: FFFFFF
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: 'proc.num[,,,pdns_server]'
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: STRING
+                      name: thresholds.0.color
+                      value: E64A19
+                    - type: STRING
+                      name: thresholds.0.threshold
+                      value: '0'
+                    - type: STRING
+                      name: thresholds.1.color
+                      value: 388E3C
+                    - type: STRING
+                      name: thresholds.1.threshold
+                      value: '1'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: STRING
+                      name: value_color
+                      value: FFFFFF
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Queries & Answers'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'UDP Queries'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'TCP Queries'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'UDP Answers'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'TCP Answers'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Errors & Drops'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Corrupt Packets'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Timed Out Packets'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Overload Drops'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: Version
+                  x: '12'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Version
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.version
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: Uptime
+                  x: '24'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Uptime
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.uptime
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: Memory
+                  x: '36'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Memory
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.memory.usage
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Response Codes'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'NoError Packets'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'NXDomain Packets'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'ServFail Packets'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Unauth Packets'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Bandwidth'
+                  x: '36'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'UDP Answers Bytes'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'TCP Answers Bytes'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'Queue Size'
+                  x: '48'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Queue Size'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.qsize.q
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: 'Open TCP Connections'
+                  x: '60'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Open TCP Connections'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.open.tcp.connections
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+            - name: Cache
+              widgets:
+                - type: item
+                  name: 'Packet Cache Size'
+                  width: '36'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Packet Cache Size'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.packetcache.size
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Packet Cache Hits / Misses'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Packet Cache Hits'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Packet Cache Misses'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'Query Cache Size'
+                  x: '36'
+                  width: '36'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Query Cache Size'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.query.cache.size
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Query Cache Hits / Misses'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Query Cache Hits'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Query Cache Misses'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Zone Cache Hits / Misses'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Zone Cache Hits'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Zone Cache Misses'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Deferred Operations'
+                  x: '36'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Deferred Cache Inserts'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Deferred Cache Lookups'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Deferred Packetcache Inserts'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Deferred Packetcache Lookups'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+            - name: Latency
+              widgets:
+                - type: svggraph
+                  name: 'Latency Breakdown'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Query Latency'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Backend Latency'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Cache Latency'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Receive Latency'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'Send Latency'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Backend Queries'
+                  x: '36'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Backend Queries'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+            - name: Security
+              widgets:
+                - type: item
+                  name: 'Security Status'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Security Status'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.security.status
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'DNS Update Activity'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'DNS Update Queries'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'DNS Update Answers'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'DNS Update Changes'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'DNS Update Refused'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'DNSSEC Signatures'
+                  x: '18'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'DNSSEC Signatures'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.signatures
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: 'Key Cache Size'
+                  x: '36'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Key Cache Size'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.key.cache.size
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Notifications & Recursion'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Incoming Notifications'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Recursing Answers'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Recursing Questions'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Recursion Unanswered'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'Signature Cache Size'
+                  x: '54'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Signature Cache Size'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.signature.cache.size
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+            - name: Performance
+              widgets:
+                - type: item
+                  name: 'File Descriptors'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'File Descriptors'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.fd.usage
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'CPU Usage'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'CPU I/O Wait'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'CPU Steal'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'CPU System (ms)'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'CPU User (ms)'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Network Errors (IPv4)'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'UDP In Errors'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'UDP NoPort Errors'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'UDP RecvBuf Errors'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'UDP SndBuf Errors'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'UDP In Checksum Errors'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: Memory
+                  x: '18'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Memory
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.memory.usage
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: 'CPU I/O Wait'
+                  x: '36'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'CPU I/O Wait'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.cpu.iowait
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Memory Usage'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Memory Usage'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Network Errors (IPv6)'
+                  x: '36'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'UDP6 In Errors'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'UDP6 NoPort Errors'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'UDP6 RecvBuf Errors'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'UDP6 SndBuf Errors'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'UDP6 In Checksum Errors'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'CPU Steal'
+                  x: '54'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'CPU Steal'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS Authoritative Server'
+                        key: pdns.auth.cpu.steal
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+      valuemaps:
+        - uuid: 244d0c6b668a475da34bd17233a89168
+          name: 'Service Status'
+          mappings:
+            - value: '0'
+              newvalue: Offline
+            - value: '1'
+              newvalue: Online
