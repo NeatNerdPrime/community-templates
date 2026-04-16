@@ -1,0 +1,1332 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: 36bff6c29af64692839d077febfc7079
+      name: 'Templates/Network devices'
+    - uuid: 846977d1dfed4968bc5f8bdb363285bc
+      name: 'Templates/Operating systems'
+  templates:
+    - uuid: dd3517f0536a49dc89e09fff62ec369b
+      template: 'OPNsense by HTTP-JSON'
+      name: 'OPNsense by HTTP-JSON'
+      groups:
+        - name: 'Templates/Network devices'
+        - name: 'Templates/Operating systems'
+      items:
+        - uuid: bf7c17f8b2094ec391ae4c4f58f45be3
+          name: 'CPU load'
+          type: DEPENDENT
+          key: opns.cpu.load
+          history: 1d
+          value_type: FLOAT
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.loadavg
+            - type: REGEX
+              parameters:
+                - ^(\d+\.\d+)
+                - \1
+          master_item:
+            key: opns.meta.load
+          triggers:
+            - uuid: 139a626f4d2a486ba7eb21d3eda124bd
+              expression: 'min(/OPNsense by HTTP-JSON/opns.cpu.load,5m)>{$OPNS.CPU.LOAD.MAX}'
+              name: 'CPU load is high'
+              priority: WARNING
+        - uuid: e525a08df2e24efea29f8b9ceb1cd48a
+          name: 'Firewall states current'
+          type: DEPENDENT
+          key: opns.fw.states.current
+          history: 1d
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.current
+          master_item:
+            key: opns.meta.fw.states
+          tags:
+            - tag: component
+              value: firewall
+        - uuid: 54937ff84f994bfcba2b4cd2e1d9465d
+          name: 'Firewall states max'
+          type: DEPENDENT
+          key: opns.fw.states.max
+          history: 1d
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.limit
+          master_item:
+            key: opns.meta.fw.states
+          tags:
+            - tag: component
+              value: firewall
+        - uuid: f8800baa079b46f485a049ee02d61b57
+          name: 'ARC Memory'
+          type: DEPENDENT
+          key: opns.memory.arc
+          history: 1d
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.memory.arc
+          master_item:
+            key: opns.meta.memory.status
+        - uuid: 552ff5f7fb0f49f0aa069311a22fe282
+          name: 'Total Memory'
+          type: DEPENDENT
+          key: opns.memory.total
+          history: 1d
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.memory.total
+          master_item:
+            key: opns.meta.memory.status
+        - uuid: 3b0ee64a3c204c22a6d10662db8569ca
+          name: 'Used Memory'
+          type: DEPENDENT
+          key: opns.memory.used
+          history: 1d
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.memory.used
+          master_item:
+            key: opns.meta.memory.status
+        - uuid: bc1340c5c93f49f09608f02a06cbbb14
+          name: 'Memory utilization in %'
+          type: CALCULATED
+          key: opns.memory.util
+          units: '%'
+          params: 'last(//opns.memory.used)*100/last(//opns.memory.total)'
+          tags:
+            - tag: component
+              value: memory
+          triggers:
+            - uuid: 9da4ebacfb764e0b9c5942ceb86cc62d
+              expression: 'min(/OPNsense by HTTP-JSON/opns.memory.util,5m)>{$OPNS.MEMORY.UTIL.MAX}'
+              name: 'Memory utilization is high'
+              priority: AVERAGE
+        - uuid: 164f961df24a445aa57872068e5a1f99
+          name: 'Meta Disk'
+          type: HTTP_AGENT
+          key: opns.meta.disk
+          delay: 5m
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var raw = value;
+                  var data;
+                  
+                  try {
+                      data = JSON.parse(raw);
+                  } catch(e) {
+                      throw 'JSON parse error: ' + e + ' | raw value: ' + raw;
+                  }
+                  
+                  if (!data || typeof data.devices === 'undefined') {
+                      throw 'No devices key found. Data: ' + JSON.stringify(data);
+                  }
+                  
+                  function toBytes(str) {
+                      if (!str || str === '-') return 0;
+                  
+                      var units = {
+                          'K': 1024,
+                          'M': 1024 * 1024,
+                          'G': 1024 * 1024 * 1024,
+                          'T': 1024 * 1024 * 1024 * 1024
+                      };
+                  
+                      var s = String(str).trim();
+                      var lastChar = s.charAt(s.length - 1).toUpperCase();
+                  
+                      if (units[lastChar]) {
+                          var num = parseFloat(s.slice(0, -1));
+                          return Math.round(num * units[lastChar]);
+                      }
+                  
+                      return Math.round(parseFloat(s));
+                  }
+                  
+                  for (var i = 0; i < data.devices.length; i++) {
+                      var d = data.devices[i];
+                      d.blocks    = toBytes(d.blocks);
+                      d.used      = toBytes(d.used);
+                      d.available = toBytes(d.available);
+                  }
+                  
+                  return JSON.stringify(data);
+          url: 'https://{HOST.IP}/api/diagnostics/system/system_disk'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: b8a1ea18da234409af64be5edef3115a
+          name: 'Meta Firewallaction'
+          type: HTTP_AGENT
+          key: opns.meta.fw.action
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          url: 'https://{HOST.IP}/api/diagnostics/firewall/stats?group_by=action'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 4f89efb7b9014c209f585e153f557f7e
+          name: 'Meta Firewall Interfaces'
+          type: HTTP_AGENT
+          key: opns.meta.fw.interface.stat
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          url: 'https://{HOST.IP}/api/diagnostics/firewall/pf_statistics/interfaces'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: d15b7b8cdec9486a97450b16166eaf81
+          name: 'Meta Firewall States'
+          type: HTTP_AGENT
+          key: opns.meta.fw.states
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          url: 'https://{HOST.IP}/api/diagnostics/firewall/pfStates'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 984a9170893d488f8c3140b9d3a5c7c2
+          name: 'Meta Gatewaystatus'
+          type: HTTP_AGENT
+          key: opns.meta.gateway.status
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.items
+          url: 'https://{HOST.IP}/api/routes/gateway/status'
+          tags:
+            - tag: component
+              value: raw
+          triggers:
+            - uuid: 20ff02c55d314364964f900d1f4ca0f3
+              expression: 'nodata(/OPNsense by HTTP-JSON/opns.meta.gateway.status,5m)=1'
+              name: 'No data from OPNsense'
+              priority: HIGH
+              description: 'can''t access the OPNsense API'
+        - uuid: 533374a5ae2e48168a900807da13b335
+          name: 'Meta Carp Interfaces'
+          type: HTTP_AGENT
+          key: opns.meta.interfaces.carp
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          url: 'https://{HOST.IP}/api/diagnostics/interface/get_vip_status'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 69e94d002b4149e2b9fe418a1186c7d5
+          name: 'Meta Interfaces'
+          type: HTTP_AGENT
+          key: opns.meta.interfaces.stat
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.interfaces
+            - type: JSONPATH
+              parameters:
+                - '$.*'
+          url: 'https://{HOST.IP}/api/diagnostics/traffic/_interface'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: eaa9d3bfec0d45b79d79452f33c04b2d
+          name: 'Meta Load'
+          type: HTTP_AGENT
+          key: opns.meta.load
+          delay: 5m
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          url: 'https://{HOST.IP}/api/diagnostics/system/system_time'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 9a4ce32c699b4fbcb0263d964186c8aa
+          name: 'Meta Memorystatus'
+          type: HTTP_AGENT
+          key: opns.meta.memory.status
+          delay: 5m
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          url: 'https://{HOST.IP}/api/diagnostics/system/systemResources'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: feadfb993c31464aba5fa96a31033cb8
+          name: 'Meta Product Info'
+          type: HTTP_AGENT
+          key: opns.meta.product.info
+          delay: 30m
+          history: 1d
+          value_type: TEXT
+          authtype: BASIC
+          username: '{$OPNS.KEY}'
+          password: '{$OPNS.SECRET}'
+          url: 'https://{HOST.IP}/api/core/firmware/info'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: 90c1c7dd19ed45038ec9281727d8a32b
+          name: 'Licensed until'
+          type: DEPENDENT
+          key: opns.product.licenseuntil
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.product.product_license.valid_to
+              error_handler: CUSTOM_VALUE
+              error_handler_params: 'no license'
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  function convertDateToUnixTimestamp(input) {
+                      const date = new Date(input);
+                      const unixTimestamp = Math.floor(date.getTime() / 1000);
+                      return unixTimestamp;
+                  }
+                  
+                  return convertDateToUnixTimestamp(value);
+          master_item:
+            key: opns.meta.product.info
+          triggers:
+            - uuid: 740c029a6e7a49cb8eedc53e759eb6bb
+              expression: '(last(/OPNsense by HTTP-JSON/opns.product.licenseuntil) - now()) / 86400 < {$OPNS.LICENSE.EXPIRY.WARN}'
+              name: 'OPNSense Business License expires soon'
+              event_name: 'OPNSense Business License expires soon (less than {$OPNS.LICENSE.EXPIRY.WARN} days)'
+              priority: AVERAGE
+        - uuid: 2bc82e7f22a3476396ce1731aee50d8f
+          name: 'States table utilization in %'
+          type: CALCULATED
+          key: opns.states.util
+          history: 30d
+          value_type: FLOAT
+          units: '%'
+          params: 'last(//opns.fw.states.current)*100/last(//opns.fw.states.max)'
+          tags:
+            - tag: component
+              value: firewall
+          triggers:
+            - uuid: 7421fd082b4a4fb0b5e57d20475b310f
+              expression: 'min(/OPNsense by HTTP-JSON/opns.states.util,#3)>{$OPNS.STATE.TABLE.UTIL.MAX}'
+              name: 'State table usage is high'
+              event_name: 'State table usage more than {$OPNS.STATE.TABLE.UTIL.MAX}.'
+              opdata: 'Current utilization: {ITEM.LASTVALUE1}'
+              priority: WARNING
+              description: 'Please check the number of connections.'
+        - uuid: f58b046d6e554f129272472d79f00389
+          name: 'System Uptime'
+          type: DEPENDENT
+          key: opns.system.uptime
+          history: 1d
+          value_type: FLOAT
+          units: uptime
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.uptime
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var str = value.trim();
+                            var days = 0;
+                            var hours = 0;
+                            var minutes = 0;
+                            var seconds = 0;
+                  
+                            // Extract days if present
+                            var dayMatch = str.match(/(\d+)\s*days?/);
+                            if (dayMatch) {
+                                days = parseInt(dayMatch[1]);
+                            }
+                  
+                            // Extract HH:MM:SS
+                            var timeMatch = str.match(/(\d{1,2}):(\d{2}):(\d{2})/);
+                            if (timeMatch) {
+                                hours = parseInt(timeMatch[1]);
+                                minutes = parseInt(timeMatch[2]);
+                                seconds = parseInt(timeMatch[3]);
+                            }
+                  
+                            return (days * 86400) + (hours * 3600) + (minutes * 60) + seconds;
+          master_item:
+            key: opns.meta.load
+          triggers:
+            - uuid: 2bf11a893917405195b8aef0620f4a30
+              expression: 'last(/OPNsense by HTTP-JSON/opns.system.uptime)<600'
+              name: '{HOST.NAME} has been restarted'
+              priority: INFO
+      discovery_rules:
+        - uuid: 42db664817fa4d23803fe5be9eb4e0a1
+          name: 'Disk Discovery'
+          type: DEPENDENT
+          key: opns.disk.discovery
+          filter:
+            conditions:
+              - macro: '{#FSNAME}'
+                value: '{$OPNS.FS.FSNAME.MATCHES}'
+              - macro: '{#FSNAME}'
+                value: '{$OPNS.FS.FSNAME.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+              - macro: '{#FSTYPE}'
+                value: '{$OPNS.FS.FSTYPE.MATCHES}'
+              - macro: '{#FSTYPE}'
+                value: '{$OPNS.FS.FSTYPE.NOT_MATCHES}'
+                operator: NOT_MATCHES_REGEX
+          lifetime: 1h
+          item_prototypes:
+            - uuid: 11fb9d381cda40c69274a77ae38679df
+              name: 'FS [{#FSNAME}]: Get data'
+              type: DEPENDENT
+              key: 'opns.disk.data[{#FSNAME},data]'
+              history: 1h
+              value_type: TEXT
+              description: 'Intermediate data of `{#FSNAME}` filesystem.'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.devices.[?(@.mountpoint==''{#FSNAME}'')].first()'
+              master_item:
+                key: opns.meta.disk
+              tags:
+                - tag: component
+                  value: raw
+                - tag: component
+                  value: storage
+                - tag: filesystem
+                  value: '{#FSNAME}'
+                - tag: fstype
+                  value: '{#FSTYPE}'
+            - uuid: 31572a0b06d845d0809c7e6334aceb4d
+              name: 'FS [{#FSNAME}]: Space: Available'
+              type: DEPENDENT
+              key: 'opns.disk.size[{#FSNAME},available]'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.available
+              master_item:
+                key: 'opns.disk.data[{#FSNAME},data]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: filesystem
+                  value: '{#FSNAME}'
+                - tag: fstype
+                  value: '{#FSTYPE}'
+            - uuid: 57842e2439b244b0abe52b55a4920fc8
+              name: 'FS [{#FSNAME}]: Space: Used, in %'
+              type: DEPENDENT
+              key: 'opns.disk.size[{#FSNAME},pused]'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.used_pct
+              master_item:
+                key: 'opns.disk.data[{#FSNAME},data]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: filesystem
+                  value: '{#FSNAME}'
+                - tag: fstype
+                  value: '{#FSTYPE}'
+              trigger_prototypes:
+                - uuid: 6029c2a1738244c2b8a46e89a11a1c54
+                  expression: 'min(/OPNsense by HTTP-JSON/opns.disk.size[{#FSNAME},pused],5m)>{$OPNS.FS.PUSED.MAX.CRIT:"{#FSNAME}"}'
+                  name: 'OPNsense: FS [{#FSNAME}]: Space is critically low'
+                  event_name: 'OPNsense: FS [{#FSNAME}]: Space is critically low (used > {$OPNS.FS.PUSED.MAX.CRIT:"{#FSNAME}"}%, total {{?last(//opns.disk.size[{#FSNAME},total])/1024/1024/1024}.fmtnum(1)}GB)'
+                  opdata: 'Space used: {{ITEM.LASTVALUE1}.fmtnum(1)}%'
+                  priority: AVERAGE
+                  description: |
+                    The volume's space usage exceeds the `{$OPNS.FS.PUSED.MAX.CRIT:"{#FSNAME}"}%` limit.
+                    The trigger expression is based on the current used and maximum available spaces.
+                    Event name represents the total volume space, which can differ from the maximum available space, depending on the filesystem type.
+                  manual_close: 'YES'
+                  tags:
+                    - tag: scope
+                      value: availability
+                    - tag: scope
+                      value: capacity
+                - uuid: 1b4b75bad3344636aed077e9b8cced25
+                  expression: 'min(/OPNsense by HTTP-JSON/opns.disk.size[{#FSNAME},pused],5m)>{$OPNS.FS.PUSED.MAX.WARN:"{#FSNAME}"}'
+                  name: 'OPNsense: FS [{#FSNAME}]: Space is low'
+                  event_name: 'OPNsense: FS [{#FSNAME}]: Space is low (used > {$OPNS.FS.PUSED.MAX.WARN:"{#FSNAME}"}%, total {{?last(//opns.disk.size[{#FSNAME},total])/1024/1024/1024}.fmtnum(1)}GB)'
+                  opdata: 'Space used: {{ITEM.LASTVALUE1}.fmtnum(1)}%'
+                  priority: WARNING
+                  description: |
+                    The volume's space usage exceeds the `{$OPNS.FS.PUSED.MAX.WARN:"{#FSNAME}"}%` limit.
+                    The trigger expression is based on the current used and maximum available spaces.
+                    Event name represents the total volume space, which can differ from the maximum available space, depending on the filesystem type.
+                  dependencies:
+                    - name: 'OPNsense: FS [{#FSNAME}]: Space is critically low'
+                      expression: 'min(/OPNsense by HTTP-JSON/opns.disk.size[{#FSNAME},pused],5m)>{$OPNS.FS.PUSED.MAX.CRIT:"{#FSNAME}"}'
+                  tags:
+                    - tag: scope
+                      value: availability
+                    - tag: scope
+                      value: capacity
+            - uuid: a87f1fa2cd0c46fb9c6fad7abdaa2384
+              name: 'FS [{#FSNAME}]: Space: Total'
+              type: DEPENDENT
+              key: 'opns.disk.size[{#FSNAME},total]'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.blocks
+              master_item:
+                key: 'opns.disk.data[{#FSNAME},data]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: filesystem
+                  value: '{#FSNAME}'
+                - tag: fstype
+                  value: '{#FSTYPE}'
+            - uuid: 0220a78e2e444223a2a0b7ce0c01d24b
+              name: 'FS [{#FSNAME}]: Space: Used'
+              type: DEPENDENT
+              key: 'opns.disk.size[{#FSNAME},used]'
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - $.used
+              master_item:
+                key: 'opns.disk.data[{#FSNAME},data]'
+              tags:
+                - tag: component
+                  value: storage
+                - tag: filesystem
+                  value: '{#FSNAME}'
+                - tag: fstype
+                  value: '{#FSTYPE}'
+          master_item:
+            key: opns.meta.disk
+          lld_macro_paths:
+            - lld_macro: '{#FSNAME}'
+              path: $.mountpoint
+            - lld_macro: '{#FSTYPE}'
+              path: $.type
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.devices
+        - uuid: d4546fdb4b074d3680dff4aa23d2e70d
+          name: 'FW Action Discovery'
+          type: DEPENDENT
+          key: opns.fw.action.discovery
+          lifetime: 1h
+          item_prototypes:
+            - uuid: 3d794da1ea9448158f5786bf264ad1a3
+              name: 'Firewall action {#FWACTION}'
+              type: DEPENDENT
+              key: 'opns.fw.action[{#FWACTION}]'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["label"] == "{#FWACTION}")].value.first()'
+              master_item:
+                key: opns.meta.fw.action
+              tags:
+                - tag: component
+                  value: firewall
+          graph_prototypes:
+            - uuid: d7df4ec348b345baa3828e2f9cc46539
+              name: 'OPNSense Action Graph  {#FWACTION}'
+              graph_items:
+                - color: 199C0D
+                  calc_fnc: MIN
+                  item:
+                    host: 'OPNsense by HTTP-JSON'
+                    key: 'opns.fw.action[{#FWACTION}]'
+          master_item:
+            key: opns.meta.fw.action
+          lld_macro_paths:
+            - lld_macro: '{#FWACTION}'
+              path: $.label
+        - uuid: d1054089e01e4f9ea8db7b2f8e7cc526
+          name: 'Gateway Discovery'
+          type: DEPENDENT
+          key: opns.gateway.discovery
+          lifetime: 1h
+          item_prototypes:
+            - uuid: 2d01c25c7c2845858b675aa10a7b3f98
+              name: 'Gateway Address {#GWSTATUSNAME}'
+              type: DEPENDENT
+              key: 'opns.gw.status.address[{#GWSTATUSNAME}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#GWSTATUSNAME}")].address.first()'
+              master_item:
+                key: opns.meta.gateway.status
+              tags:
+                - tag: Gateway
+                  value: '{#GWSTATUSNAME}'
+            - uuid: 3c3db192514349eda002215f553735db
+              name: 'Gateway RTT {#GWSTATUSNAME}'
+              type: DEPENDENT
+              key: 'opns.gw.status.delay[{#GWSTATUSNAME}]'
+              value_type: FLOAT
+              units: ms
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#GWSTATUSNAME}")].delay.first()'
+                - type: NOT_MATCHES_REGEX
+                  parameters:
+                    - \~
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '9999'
+                - type: RTRIM
+                  parameters:
+                    - ms
+              master_item:
+                key: opns.meta.gateway.status
+              tags:
+                - tag: Gateway
+                  value: '{#GWSTATUSNAME}'
+            - uuid: 0508664d600d48ababd8b8d1481e5191
+              name: 'Gateway loss {#GWSTATUSNAME}'
+              type: DEPENDENT
+              key: 'opns.gw.status.loss[{#GWSTATUSNAME}]'
+              value_type: FLOAT
+              units: '%'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#GWSTATUSNAME}")].loss.first()'
+                - type: NOT_MATCHES_REGEX
+                  parameters:
+                    - \~
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '9999'
+                - type: RTRIM
+                  parameters:
+                    - '%'
+              master_item:
+                key: opns.meta.gateway.status
+              tags:
+                - tag: Gateway
+                  value: '{#GWSTATUSNAME}'
+              trigger_prototypes:
+                - uuid: c19ef9f23a4748a0a91bd86b9cc91e83
+                  expression: 'min(/OPNsense by HTTP-JSON/opns.gw.status.loss[{#GWSTATUSNAME}],5m)>{$OPNS.GW.HIGH.PACKET.LOSS}'
+                  name: 'Gateway {#GWSTATUSNAME} High packet loss'
+                  priority: HIGH
+                  dependencies:
+                    - name: 'Gateway {#GWSTATUSNAME} is down'
+                      expression: 'min(/OPNsense by HTTP-JSON/opns.gw.status.loss[{#GWSTATUSNAME}],5m)>99'
+                - uuid: 89f05eea06224a15bfe33977b378e846
+                  expression: 'min(/OPNsense by HTTP-JSON/opns.gw.status.loss[{#GWSTATUSNAME}],5m)>99'
+                  name: 'Gateway {#GWSTATUSNAME} is down'
+                  priority: DISASTER
+                - uuid: 24002d47a9b24b058efa290ccb377335
+                  expression: 'min(/OPNsense by HTTP-JSON/opns.gw.status.loss[{#GWSTATUSNAME}],5m)>{$OPNS.GW.MIN.PACKET.LOSS}'
+                  name: 'Gateway {#GWSTATUSNAME} Packet loss'
+                  priority: AVERAGE
+                  dependencies:
+                    - name: 'Gateway {#GWSTATUSNAME} High packet loss'
+                      expression: 'min(/OPNsense by HTTP-JSON/opns.gw.status.loss[{#GWSTATUSNAME}],5m)>{$OPNS.GW.HIGH.PACKET.LOSS}'
+            - uuid: 958e45fe885c46cca12c5a427d93e54f
+              name: 'Gateway Status {#GWSTATUSNAME}'
+              type: DEPENDENT
+              key: 'opns.gw.status.status[{#GWSTATUSNAME}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#GWSTATUSNAME}")].status_translated.first()'
+              master_item:
+                key: opns.meta.gateway.status
+              tags:
+                - tag: Gateway
+                  value: '{#GWSTATUSNAME}'
+            - uuid: c05e44967fcc418bbf48c52c937422fd
+              name: 'Gateway RTTd {#GWSTATUSNAME}'
+              type: DEPENDENT
+              key: 'opns.gw.status.stddev[{#GWSTATUSNAME}]'
+              value_type: FLOAT
+              units: ms
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#GWSTATUSNAME}")].stddev.first()'
+                - type: NOT_MATCHES_REGEX
+                  parameters:
+                    - \~
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '9999'
+                - type: RTRIM
+                  parameters:
+                    - ms
+              master_item:
+                key: opns.meta.gateway.status
+              tags:
+                - tag: Gateway
+                  value: '{#GWSTATUSNAME}'
+          trigger_prototypes:
+            - uuid: 6ee07909e65349ebb72ccd8c2754e1ea
+              expression: 'last(/OPNsense by HTTP-JSON/opns.gw.status.loss[{#GWSTATUSNAME}])=9999 and last(/OPNsense by HTTP-JSON/opns.gw.status.stddev[{#GWSTATUSNAME}])=9999 and last(/OPNsense by HTTP-JSON/opns.gw.status.delay[{#GWSTATUSNAME}])=9999'
+              name: 'Gateway Monitoring on {#GWSTATUSNAME} is disabled'
+              priority: AVERAGE
+              description: 'please enable Gateway Monitoring: https://docs.opnsense.org/manual/gateways.html'
+          master_item:
+            key: opns.meta.gateway.status
+          lld_macro_paths:
+            - lld_macro: '{#GWSTATUSNAME}'
+              path: $.name
+        - uuid: 806a32bff1f7404dae6418990e59d210
+          name: 'Interface CARP Discovery'
+          type: DEPENDENT
+          key: opns.interface.carp.discovery
+          lifetime: 1d
+          item_prototypes:
+            - uuid: bcd3129d95bc4fec85eef33485aa454d
+              name: 'Carp Status of {#OPNS.INTERFACE.NAME}'
+              type: DEPENDENT
+              key: 'opns.carp.status[{#OPNS.INTERFACE.NAME}]'
+              value_type: TEXT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["interface"] == "{#OPNS.INTERFACE.NAME}")].["status"].first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 2h
+              master_item:
+                key: opns.meta.interfaces.carp
+              trigger_prototypes:
+                - uuid: e5f549c43e8c4e99a0babe831f84bc4e
+                  expression: 'change(/OPNsense by HTTP-JSON/opns.carp.status[{#OPNS.INTERFACE.NAME}])<>0'
+                  name: 'Carp Status Changed on {#OPNS.INTERFACE.NAME}'
+                  opdata: '{#OPNS.INTERFACE.NAME}: {ITEM.LASTVALUE}'
+                  priority: HIGH
+          master_item:
+            key: opns.meta.interfaces.carp
+          lld_macro_paths:
+            - lld_macro: '{#OPNS.INTERFACE.NAME}'
+              path: $.interface
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.rows[*]'
+              error_handler: CUSTOM_ERROR
+              error_handler_params: 'Could not locate any defined CARP interfaces.'
+        - uuid: 9941458d7de1441e950799233705bdbe
+          name: 'Interface Stats Discovery'
+          type: DEPENDENT
+          key: opns.interface.stats.discovery
+          item_prototypes:
+            - uuid: 789203e62ec945f59354f25145cf1332
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: Bytes received'
+              type: DEPENDENT
+              key: 'opns.interface.bytes.received[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["bytes received"].first()'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 193d6a0bab5a461ea66c2e6111e2cff3
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: Bytes transmitted'
+              type: DEPENDENT
+              key: 'opns.interface.bytes.transmitted[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["bytes transmitted"].first()'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 5358a5f8ce82438b944064510bc41c32
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: collisions'
+              type: DEPENDENT
+              key: 'opns.interface.collisions[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["collisions"].first()'
+                - type: CHANGE_PER_SECOND
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 7da6790469d9472dbf6c280d3005a4f1
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: blocked bytes INv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.bytes.blockin.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["in4_block_bytes"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 160193b965374945916b3e5200e599e0
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: blocked bytes OUTv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.bytes.blockout.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["out4_block_bytes"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 311e78d7cdf64d128c8364f71359856c
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: passed bytes INv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.bytes.passin.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["in4_pass_bytes"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 5c7bab186db8413789152cb88bba36de
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: passed bytes OUTv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.bytes.passout.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              units: Bps
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["out4_pass_bytes"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: a606bd62e4b14e7ca17f1120a72de03d
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: blocked packets INv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.packets.blockin.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["in4_block_packets"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: e3031b6d3b904aa9b8d38ece734f29f8
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: blocked packets OUTv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.packets.blockout.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["out4_block_packets"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 19d8084e9e414b38a2d41729f37f5f55
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: passed packets INv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.packets.passin.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["in4_pass_packets"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 7f1a340e4f2d403e9ee052fc2e4d9e90
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: passed packets OUTv4'
+              type: DEPENDENT
+              key: 'opns.interface.fw.packets.passout.v4[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.interfaces.["{#OPNS.INTERFACE.DEVICE}"].["out4_pass_packets"]'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.fw.interface.stat
+              tags:
+                - tag: component
+                  value: firewall
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 586cf3bf6e554e9786977aa873d07b9b
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: input queue drops'
+              type: DEPENDENT
+              key: 'opns.interface.input.queue.drops[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["input queue drops"].first()'
+                - type: CHANGE_PER_SECOND
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 85927270d9ad48e38b9805ec27e55850
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: multicasts received'
+              type: DEPENDENT
+              key: 'opns.interface.multicast.received[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["multicasts received"].first()'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 0e613cc99107419ea3864bafb4d35612
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: output errors'
+              type: DEPENDENT
+              key: 'opns.interface.output.errors[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["output errors"].first()'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 71985c6a0b4141fc8d509f2d930446c0
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: packets received'
+              type: DEPENDENT
+              key: 'opns.interface.packets.received[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["packets received"].first()'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: c55d425c6f6d484189ee66f5adbf369c
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: packets transmitted'
+              type: DEPENDENT
+              key: 'opns.interface.packets.transmitted[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["packets transmitted"].first()'
+                - type: CHANGE_PER_SECOND
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+            - uuid: 9b71dc0d825540f8a19df4b6588826f2
+              name: 'Interface [{#OPNS.INTERFACE.DEVICE}({#OPNS.INTERFACE.NAME})]: packets for unknown protocol'
+              type: DEPENDENT
+              key: 'opns.interface.packets.unknown.protocol[{#OPNS.INTERFACE.DEVICE}]'
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$..[?(@.["name"] == "{#OPNS.INTERFACE.NAME}")].["packets for unknown protocol"].first()'
+                - type: CHANGE_PER_SECOND
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1h
+              master_item:
+                key: opns.meta.interfaces.stat
+              tags:
+                - tag: component
+                  value: network
+                - tag: description
+                  value: '{#OPNS.INTERFACE.NAME}'
+                - tag: interface
+                  value: '{#OPNS.INTERFACE.DEVICE}'
+          master_item:
+            key: opns.meta.interfaces.stat
+          lld_macro_paths:
+            - lld_macro: '{#OPNS.INTERFACE.DEVICE}'
+              path: $.device
+            - lld_macro: '{#OPNS.INTERFACE.NAME}'
+              path: $.name
+      macros:
+        - macro: '{$OPNS.CPU.LOAD.MAX}'
+          value: '2'
+        - macro: '{$OPNS.FS.FSNAME.MATCHES}'
+          value: .+
+          description: 'Used for filesystem discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$OPNS.FS.FSNAME.NOT_MATCHES}'
+          value: ^(/dev|/sys|/run|/proc|.+/shm$)
+          description: 'Used for filesystem discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$OPNS.FS.FSTYPE.MATCHES}'
+          value: ^(btrfs|ext2|ext3|ext4|reiser|xfs|ffs|ufs|jfs|jfs2|vxfs|hfs|apfs|refs|ntfs|fat32|zfs)$
+          description: 'Used for filesystem discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$OPNS.FS.FSTYPE.NOT_MATCHES}'
+          value: ^\s$
+          description: 'Used for filesystem discovery. Can be overridden on the host or linked template level.'
+        - macro: '{$OPNS.FS.PUSED.MAX.CRIT}'
+          value: '95'
+          description: 'The critical threshold of the filesystem utilization.'
+        - macro: '{$OPNS.FS.PUSED.MAX.WARN}'
+          value: '90'
+          description: 'The warning threshold of the filesystem utilization.'
+        - macro: '{$OPNS.GW.HIGH.PACKET.LOSS}'
+          value: '50'
+        - macro: '{$OPNS.GW.MIN.PACKET.LOSS}'
+          value: '10'
+        - macro: '{$OPNS.KEY}'
+        - macro: '{$OPNS.LICENSE.EXPIRY.WARN}'
+          value: '30'
+        - macro: '{$OPNS.MEMORY.UTIL.MAX}'
+          value: '90'
+        - macro: '{$OPNS.SECRET}'
+        - macro: '{$OPNS.STATE.TABLE.UTIL.MAX}'
+          value: '90'
+      dashboards:
+        - uuid: 7a4b378cb31c4d6fb3c4c69731653336
+          name: 'OPNsense Info'
+          pages:
+            - name: 'OPNSense Info'
+              widgets:
+                - type: item
+                  name: 'CPU Load'
+                  width: '12'
+                  height: '4'
+                  fields:
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'OPNsense by HTTP-JSON'
+                        key: opns.cpu.load
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '3'
+                    - type: INTEGER
+                      name: show.3
+                      value: '4'
+                    - type: INTEGER
+                      name: show.4
+                      value: '5'
+                - type: svggraph
+                  'y': '4'
+                  width: '41'
+                  height: '4'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Firewall action*'
+                    - type: STRING
+                      name: reference
+                      value: GNQTN
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: honeycomb
+                  name: 'Carp Status'
+                  'y': '8'
+                  width: '41'
+                  height: '5'
+                  fields:
+                    - type: STRING
+                      name: items.0
+                      value: 'Carp Status of *'
+                    - type: STRING
+                      name: primary_label
+                      value: '{ITEM.NAME}'
+                    - type: STRING
+                      name: reference
+                      value: RDXXH
+                - type: piechart
+                  name: 'Memory Usage'
+                  x: '12'
+                  width: '14'
+                  height: '4'
+                  fields:
+                    - type: STRING
+                      name: ds.0.color
+                      value: 00FF00
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Total Memory'
+                    - type: STRING
+                      name: ds.1.color
+                      value: FF4000
+                    - type: STRING
+                      name: ds.1.items.0
+                      value: 'Used Memory'
+                    - type: INTEGER
+                      name: space
+                      value: '2'
+                - type: piechart
+                  name: 'FW States'
+                  x: '26'
+                  width: '15'
+                  height: '4'
+                  fields:
+                    - type: STRING
+                      name: ds.0.color
+                      value: 00FF00
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Firewall states max'
+                    - type: STRING
+                      name: ds.1.color
+                      value: FF4000
+                    - type: STRING
+                      name: ds.1.items.0
+                      value: 'Firewall states current'
+            - name: 'Gateway Info'
+              widgets:
+                - type: svggraph
+                  name: RoundTripTime
+                  width: '45'
+                  height: '6'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Gateway RTT*'
+                    - type: STRING
+                      name: reference
+                      value: JRMUO
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Gateway lost packages in %'
+                  'y': '6'
+                  width: '45'
+                  height: '6'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Gateway loss*'
+                    - type: STRING
+                      name: reference
+                      value: XALVE
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+            - name: Inerfaces
+              widgets:
+                - type: svggraph
+                  name: 'Bytes v4'
+                  width: '55'
+                  height: '10'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: '*blocked bytes INv4'
+                    - type: INTEGER
+                      name: ds.1.color_palette
+                      value: '1'
+                    - type: STRING
+                      name: ds.1.items.0
+                      value: '*passed bytes INv4'
+                    - type: INTEGER
+                      name: lefty_scale
+                      value: '1'
+                    - type: INTEGER
+                      name: legend_lines
+                      value: '4'
+                    - type: STRING
+                      name: reference
+                      value: MARXC
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
