@@ -11,7 +11,7 @@ Monitor Windows machine certificates via the registry, using **Zabbix Agent 2** 
 | `windows_certificates_registry.yaml` | English |
 
 
-Both templates are functionally identical. Only display fields (`name`, `description`, macro descriptions) differ.
+Only display fields (`name`, `description`, macro descriptions) differ.
 
 ---
 
