@@ -1,0 +1,358 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: b00eed3babbe43409cc6b9e90fca5f25
+      name: 'Security SCANS'
+  templates:
+    - uuid: efc9ddecb4ea405897be451c9eed6080
+      template: 'Mozilla HTTP Observatory API'
+      name: 'Mozilla HTTP Observatory API'
+      description: |
+        Monitors website HTTP Observatory posture via the Mozilla API using explicit target-list discovery and per-target scan checks (grade, score, status, tests, error, details URL). Designed for community sharing with host-override macros and regex-based grade policy control. 
+        
+        Author: ://echo@dla.network [oZark oRChes✝ra✝'d] 
+        (https://github.com/DLA-neTWorK).
+      groups:
+        - name: 'Security SCANS'
+      discovery_rules:
+        - uuid: b01715843ef047ea88e15b0f331e5b7b
+          name: 'Mozilla Observatory Target Discovery - API'
+          type: HTTP_AGENT
+          key: mozilla.api.discovery
+          delay: 30m
+          lifetime: 30d
+          enabled_lifetime_type: DISABLE_NEVER
+          description: 'Discovers Mozilla Observatory targets by reading the explicit target list in {$MOZ_API_TARGETS} and building one LLD entity per unique host. Each target must be listed explicitly with no wildcard expansion (for example: site.com, dev.site.com, prod.site.com). The discovery connectivity probe uses the first hostname in {$MOZ_API_TARGETS}.'
+          item_prototypes:
+            - uuid: e2ff6d979a584701ab23734e7016948b
+              name: 'Mozilla API {#TARGET}: Details URL'
+              type: HTTP_AGENT
+              key: 'mozilla.api.details_url[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              value_type: TEXT
+              description: 'Runs a live Mozilla Observatory scan for the target and returns the details URL for report drill-down.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (!src.details_url) return 'NOT_FOUND';
+                      return String(src.details_url);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: 'Reference URL'
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+            - uuid: 3faa60569cc94f35980c600cf1bdfb51
+              name: 'Mozilla API {#TARGET}: Error'
+              type: HTTP_AGENT
+              key: 'mozilla.api.error[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              value_type: TEXT
+              description: 'Runs a live Mozilla Observatory scan for the target and returns error text when scan execution reports a problem.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (src.error === null || src.error === undefined || src.error === '') return 'IDLE';
+                      return String(src.error);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: 'Scan Error'
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+            - uuid: 90cc588bba3e40b5913e9ba89beb2b64
+              name: 'Mozilla API {#TARGET}: Grade'
+              type: HTTP_AGENT
+              key: 'mozilla.api.grade[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              value_type: CHAR
+              description: 'Runs a live Mozilla Observatory scan for the discovered target and returns the latest letter grade (A+ through F).'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (src.error && !src.grade) return 'NOT_FOUND';
+                      if (src.grade === null || src.grade === undefined || src.grade === '') return 'NOT_FOUND';
+                      return String(src.grade);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: Grade
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+              trigger_prototypes:
+                - uuid: d2f23453a431437ea5a8c43b7c232ebf
+                  expression: 'find(/Mozilla HTTP Observatory API/mozilla.api.grade[{#TARGET}],,"iregexp","{$MOZ_API_ALLOWED_GRADES_REGEX}")=0 and last(/Mozilla HTTP Observatory API/mozilla.api.grade[{#TARGET}])<>"NOT_FOUND"'
+                  recovery_mode: RECOVERY_EXPRESSION
+                  recovery_expression: 'find(/Mozilla HTTP Observatory API/mozilla.api.grade[{#TARGET}],,"iregexp","{$MOZ_API_ALLOWED_GRADES_REGEX}")=1 or last(/Mozilla HTTP Observatory API/mozilla.api.grade[{#TARGET}])="NOT_FOUND"'
+                  name: 'Mozilla API {#TARGET}: Grade outside allowed set'
+                  event_name: 'Mozilla API grade outside allowed set on [{#TARGET}] (current: {ITEM.LASTVALUE1})'
+                  priority: WARNING
+                  description: 'Fires when the current grade does not match {$MOZ_API_ALLOWED_GRADES_REGEX}. Default behavior alerts on grades below A- (B+, B, B-, C, D, F).'
+                  manual_close: 'YES'
+                  tags:
+                    - tag: Application
+                      value: 'Mozilla Observatory API'
+                    - tag: Class
+                      value: Security
+                    - tag: Component
+                      value: Grade
+                    - tag: Target
+                      value: '{#TARGET}'
+            - uuid: fd44608136734111995b822fff6ea09d
+              name: 'Mozilla API {#TARGET}: Score'
+              type: HTTP_AGENT
+              key: 'mozilla.api.score[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              description: 'Runs a live Mozilla Observatory scan for the target and returns the numeric score.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (src.score === null || src.score === undefined) return 0;
+                      return Number(src.score);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: Score
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+            - uuid: e535f3b51efd432e994e5a6af565e2bf
+              name: 'Mozilla API {#TARGET}: Status code'
+              type: HTTP_AGENT
+              key: 'mozilla.api.status_code[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              description: 'Runs a live Mozilla Observatory scan for the target and returns the reported status code.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (src.status_code === null || src.status_code === undefined) return 0;
+                      return Number(src.status_code);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: HTTP
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+            - uuid: cd6d29187ffd45ba90f4e1e7d7827c56
+              name: 'Mozilla API {#TARGET}: Tests failed'
+              type: HTTP_AGENT
+              key: 'mozilla.api.tests_failed[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              description: 'Runs a live Mozilla Observatory scan for the target and returns the number of failed tests.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (src.tests_failed === null || src.tests_failed === undefined) return 0;
+                      return Number(src.tests_failed);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: Tests
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+            - uuid: 68c32ea7404f4263855974e9bfffb4c9
+              name: 'Mozilla API {#TARGET}: Tests passed'
+              type: HTTP_AGENT
+              key: 'mozilla.api.tests_passed[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              description: 'Runs a live Mozilla Observatory scan for the target and returns the number of passed tests.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (src.tests_passed === null || src.tests_passed === undefined) return 0;
+                      return Number(src.tests_passed);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: Tests
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+            - uuid: 3936c713a523408dab1aebe21201cc17
+              name: 'Mozilla API {#TARGET}: Tests quantity'
+              type: HTTP_AGENT
+              key: 'mozilla.api.tests_quantity[{#TARGET}]'
+              delay: 30m
+              history: 90d
+              description: 'Runs a live Mozilla Observatory scan for the target and returns the total number of tests.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - |
+                      var src = JSON.parse(value);
+                      if (src.tests_quantity === null || src.tests_quantity === undefined) return 0;
+                      return Number(src.tests_quantity);
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: Tests
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
+          timeout: 30s
+          url: '{$MOZ_API_BASE}/api/v2/scan?host={{$MOZ_API_TARGETS}.regsub("^\s*([^,;\s]+).*$","\1")}'
+          request_method: POST
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var out = { data: [] };
+                  var seen = {};
+                  var targetsRaw = '{$MOZ_API_TARGETS}';
+                  function normalizeTarget(v) {
+                      if (!v) return '';
+                      var t = String(v).trim();
+                      if (!t) return '';
+                      t = t.replace(/^https?:\/\//i, '');
+                      t = t.split('/')[0];
+                      t = t.split('?')[0];
+                      t = t.split('#')[0];
+                      t = t.toLowerCase();
+                      t = t.replace(/:\d+$/, '');
+                      return t;
+                  }
+                  var parts = String(targetsRaw || '').split(/[\n,; ]+/);
+                  for (var i = 0; i < parts.length; i++) {
+                      var target = normalizeTarget(parts[i]);
+                      if (!target) continue;
+                      if (seen[target]) continue;
+                      seen[target] = true;
+                      out.data.push({
+                          '{#TARGET}': target,
+                          '{#TARGET_HOST}': target
+                      });
+                  }
+                  return JSON.stringify(out);
+      tags:
+        - tag: author
+          value: '://echo@dla.network [oZark oRChes✝ra✝''d]'
+        - tag: author_url
+          value: 'https://github.com/DLA-neTWorK'
+        - tag: domain
+          value: web-security
+        - tag: vendor
+          value: mozilla
+      macros:
+        - macro: '{$MOZ_API_ALLOWED_GRADES_REGEX}'
+          value: ^(A\+|A|A-)$
+          description: 'Allowed grades regex for alerting. Default allows A+, A, and A-. Trigger fires when grade does not match this pattern (excluding NOT_FOUND).'
+        - macro: '{$MOZ_API_BASE}'
+          value: 'https://observatory-api.mdn.mozilla.net'
+          description: 'Template-level default base URL for Mozilla Observatory API endpoints; override at host level only if needed'
+        - macro: '{$MOZ_API_TARGETS}'
+          value: example.org
+          description: 'Explicit list of hostnames to scan, one per line or comma-separated. Each target must be listed individually (e.g. site.com, dev.site.com, prod.site.com). No wildcard expansion is applied.'
