@@ -55,15 +55,15 @@ The LLD preprocessing pipeline:
 
 ### Low-Level Discovery Rule
 
-![LLD Rules](7.4/files/img/lld_rules.png)
+![LLD Rules](files/img/lld_rules.png)
 
 ### Item Prototypes
 
-![Item Prototypes](7.4/files/img/item_proto.png)
+![Item Prototypes](files/img/item_proto.png)
 
 ### Trigger Prototype
 
-![Trigger Prototype](7.4/files/img/trigger_proto.png)
+![Trigger Prototype](files/img/trigger_proto.png)
 
 ---
 

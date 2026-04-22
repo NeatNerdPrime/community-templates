@@ -7,11 +7,7 @@ zabbix_export:
     - uuid: efc9ddecb4ea405897be451c9eed6080
       template: 'Mozilla HTTP Observatory API'
       name: 'Mozilla HTTP Observatory API'
-      description: |
-        Monitors website HTTP Observatory posture via the Mozilla API using explicit target-list discovery and per-target scan checks (grade, score, status, tests, error, details URL). Designed for community sharing with host-override macros and regex-based grade policy control. 
-        
-        Author: ://echo@dla.network [oZark oRChes✝ra✝'d] 
-        (https://github.com/DLA-neTWorK).
+      description: 'Monitors website HTTP Observatory posture via the Mozilla API using explicit target-list discovery and per-target scan checks (grade, score, status, tests, error, details URL). Designed for community sharing with host-override macros and regex-based grade policy control. Author: ://echo@dla.network [oZark oRChes✝ra✝''d] (https://github.com/DLA-neTWorK).'
       groups:
         - name: 'Security SCANS'
       discovery_rules:
@@ -26,9 +22,8 @@ zabbix_export:
           item_prototypes:
             - uuid: e2ff6d979a584701ab23734e7016948b
               name: 'Mozilla API {#TARGET}: Details URL'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.details_url[{#TARGET}]'
-              delay: 30m
               history: 90d
               value_type: TEXT
               description: 'Runs a live Mozilla Observatory scan for the target and returns the details URL for report drill-down.'
@@ -39,9 +34,8 @@ zabbix_export:
                       var src = JSON.parse(value);
                       if (!src.details_url) return 'NOT_FOUND';
                       return String(src.details_url);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -59,9 +53,8 @@ zabbix_export:
                   value: Mozilla
             - uuid: 3faa60569cc94f35980c600cf1bdfb51
               name: 'Mozilla API {#TARGET}: Error'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.error[{#TARGET}]'
-              delay: 30m
               history: 90d
               value_type: TEXT
               description: 'Runs a live Mozilla Observatory scan for the target and returns error text when scan execution reports a problem.'
@@ -72,9 +65,8 @@ zabbix_export:
                       var src = JSON.parse(value);
                       if (src.error === null || src.error === undefined || src.error === '') return 'IDLE';
                       return String(src.error);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -92,9 +84,8 @@ zabbix_export:
                   value: Mozilla
             - uuid: 90cc588bba3e40b5913e9ba89beb2b64
               name: 'Mozilla API {#TARGET}: Grade'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.grade[{#TARGET}]'
-              delay: 30m
               history: 90d
               value_type: CHAR
               description: 'Runs a live Mozilla Observatory scan for the discovered target and returns the latest letter grade (A+ through F).'
@@ -106,9 +97,8 @@ zabbix_export:
                       if (src.error && !src.grade) return 'NOT_FOUND';
                       if (src.grade === null || src.grade === undefined || src.grade === '') return 'NOT_FOUND';
                       return String(src.grade);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -143,11 +133,36 @@ zabbix_export:
                       value: Grade
                     - tag: Target
                       value: '{#TARGET}'
+            - uuid: 0343e7c7acf84b4fb10d202838d68e75
+              name: 'Mozilla API {#TARGET}: Raw scan response'
+              type: HTTP_AGENT
+              key: 'mozilla.api.raw[{#TARGET}]'
+              delay: 30m
+              history: 30d
+              value_type: TEXT
+              description: 'Master scan response item. Fetches JSON once per target and feeds dependent metrics to reduce duplicate API calls.'
+              timeout: 30s
+              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
+              request_method: POST
+              tags:
+                - tag: Application
+                  value: 'Mozilla Observatory API'
+                - tag: Class
+                  value: Security
+                - tag: Component
+                  value: 'Raw Response'
+                - tag: 'Data Source'
+                  value: 'Mozilla API'
+                - tag: Service
+                  value: 'External Scan'
+                - tag: Target
+                  value: '{#TARGET}'
+                - tag: Vendor
+                  value: Mozilla
             - uuid: fd44608136734111995b822fff6ea09d
               name: 'Mozilla API {#TARGET}: Score'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.score[{#TARGET}]'
-              delay: 30m
               history: 90d
               description: 'Runs a live Mozilla Observatory scan for the target and returns the numeric score.'
               preprocessing:
@@ -157,9 +172,8 @@ zabbix_export:
                       var src = JSON.parse(value);
                       if (src.score === null || src.score === undefined) return 0;
                       return Number(src.score);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -177,9 +191,8 @@ zabbix_export:
                   value: Mozilla
             - uuid: e535f3b51efd432e994e5a6af565e2bf
               name: 'Mozilla API {#TARGET}: Status code'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.status_code[{#TARGET}]'
-              delay: 30m
               history: 90d
               description: 'Runs a live Mozilla Observatory scan for the target and returns the reported status code.'
               preprocessing:
@@ -189,9 +202,8 @@ zabbix_export:
                       var src = JSON.parse(value);
                       if (src.status_code === null || src.status_code === undefined) return 0;
                       return Number(src.status_code);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -209,9 +221,8 @@ zabbix_export:
                   value: Mozilla
             - uuid: cd6d29187ffd45ba90f4e1e7d7827c56
               name: 'Mozilla API {#TARGET}: Tests failed'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.tests_failed[{#TARGET}]'
-              delay: 30m
               history: 90d
               description: 'Runs a live Mozilla Observatory scan for the target and returns the number of failed tests.'
               preprocessing:
@@ -221,9 +232,8 @@ zabbix_export:
                       var src = JSON.parse(value);
                       if (src.tests_failed === null || src.tests_failed === undefined) return 0;
                       return Number(src.tests_failed);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -241,9 +251,8 @@ zabbix_export:
                   value: Mozilla
             - uuid: 68c32ea7404f4263855974e9bfffb4c9
               name: 'Mozilla API {#TARGET}: Tests passed'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.tests_passed[{#TARGET}]'
-              delay: 30m
               history: 90d
               description: 'Runs a live Mozilla Observatory scan for the target and returns the number of passed tests.'
               preprocessing:
@@ -253,9 +262,8 @@ zabbix_export:
                       var src = JSON.parse(value);
                       if (src.tests_passed === null || src.tests_passed === undefined) return 0;
                       return Number(src.tests_passed);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -273,9 +281,8 @@ zabbix_export:
                   value: Mozilla
             - uuid: 3936c713a523408dab1aebe21201cc17
               name: 'Mozilla API {#TARGET}: Tests quantity'
-              type: HTTP_AGENT
+              type: DEPENDENT
               key: 'mozilla.api.tests_quantity[{#TARGET}]'
-              delay: 30m
               history: 90d
               description: 'Runs a live Mozilla Observatory scan for the target and returns the total number of tests.'
               preprocessing:
@@ -285,9 +292,8 @@ zabbix_export:
                       var src = JSON.parse(value);
                       if (src.tests_quantity === null || src.tests_quantity === undefined) return 0;
                       return Number(src.tests_quantity);
-              timeout: 30s
-              url: '{$MOZ_API_BASE}/api/v2/scan?host={#TARGET}'
-              request_method: POST
+              master_item:
+                key: 'mozilla.api.raw[{#TARGET}]'
               tags:
                 - tag: Application
                   value: 'Mozilla Observatory API'
@@ -325,7 +331,7 @@ zabbix_export:
                       t = t.replace(/:\d+$/, '');
                       return t;
                   }
-                  var parts = String(targetsRaw || '').split(/[\n,; ]+/);
+                  var parts = String(targetsRaw || '').split(/[\s,;]+/);
                   for (var i = 0; i < parts.length; i++) {
                       var target = normalizeTarget(parts[i]);
                       if (!target) continue;
@@ -338,10 +344,6 @@ zabbix_export:
                   }
                   return JSON.stringify(out);
       tags:
-        - tag: author
-          value: '://echo@dla.network [oZark oRChes✝ra✝''d]'
-        - tag: author_url
-          value: 'https://github.com/DLA-neTWorK'
         - tag: domain
           value: web-security
         - tag: vendor
