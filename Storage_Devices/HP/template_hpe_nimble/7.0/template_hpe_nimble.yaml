@@ -1,0 +1,554 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 8e1db8c82c5a4b46bdab26cbe8cf3449
+      name: Templates/SAN
+  templates:
+    - uuid: 552f7719f505464a9b0716509a6e3864
+      template: 'HPE Nimble Storage by SNMP'
+      name: 'HPE Nimble Storage by SNMP'
+      description: |
+        HPE Nimble Storage (Nimble OS 5.x / Alletra 6000) monitoring via SNMP.
+        Includes: Array IOPS & Throughput, Volume LLD (capacity, performance, status),
+        Network Interface LLD (IF-MIB), SNMP Trap receiver for hardware alerts.
+        
+        NOTE: Hardware sensors (fan, PSU, temperature) are NOT exposed via polling OIDs
+        on Nimble OS. Hardware health events arrive as SNMP Traps from the array.
+      groups:
+        - name: Templates/SAN
+      items:
+        - uuid: 9100a78683344643a5373827be179035
+          name: 'Global Snapshot Capacity Used'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.14.0]'
+          key: nimble.array.snap_used
+          delay: 5m
+          history: 7d
+          units: B
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '1048576'
+          tags:
+            - tag: component
+              value: capacity
+        - uuid: 6643284ef6a84bf6bb189fb3a88757f5
+          name: 'Global Volume Capacity Used'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.12.0]'
+          key: nimble.array.vol_used
+          delay: 5m
+          history: 7d
+          units: B
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '1048576'
+          tags:
+            - tag: component
+              value: capacity
+        - uuid: 7d0339c42c854d229acc54845569b29a
+          name: 'Total Read IOPS'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.2.0]'
+          key: nimble.io.reads
+          history: 7d
+          value_type: FLOAT
+          units: '!iops'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 19e4d63a3efd4ffba8dc89e86f6f2395
+          name: 'Total Read Throughput'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.8.0]'
+          key: nimble.io.read_bps
+          history: 7d
+          value_type: FLOAT
+          units: bps
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+            - type: MULTIPLIER
+              parameters:
+                - '8'
+          tags:
+            - tag: component
+              value: performance
+        - uuid: e21298200a7748b6bd91b62183373859
+          name: 'Total Read Latency'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.6.0]'
+          key: nimble.io.read_lat
+          history: 7d
+          value_type: FLOAT
+          units: µs
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 0497178be0894cffb4837171c5139e7a
+          name: 'Total Sequential Reads'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.3.0]'
+          key: nimble.io.seq_reads
+          history: 7d
+          value_type: FLOAT
+          units: '!iops'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 7607ff3edf664cc7a6bf3541c883753e
+          name: 'Total Sequential Writes'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.5.0]'
+          key: nimble.io.seq_writes
+          history: 7d
+          value_type: FLOAT
+          units: '!iops'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 286c6481ffd842b685fe49d567ab1912
+          name: 'Total Write IOPS'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.4.0]'
+          key: nimble.io.writes
+          history: 7d
+          value_type: FLOAT
+          units: '!iops'
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 52a7000be7024d918700895eef92fb1a
+          name: 'Total Write Throughput'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.10.0]'
+          key: nimble.io.write_bps
+          history: 7d
+          value_type: FLOAT
+          units: bps
+          preprocessing:
+            - type: CHANGE_PER_SECOND
+              parameters:
+                - ''
+            - type: MULTIPLIER
+              parameters:
+                - '8'
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 5e3df2e3ad264197ae9ef28537f641d3
+          name: 'Total Write Latency'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.4.1.37447.1.3.7.0]'
+          key: nimble.io.write_lat
+          history: 7d
+          value_type: FLOAT
+          units: µs
+          tags:
+            - tag: component
+              value: performance
+        - uuid: e33f38d83b0242ddb28844d03b6abf2a
+          name: 'System contact details'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.4.0]'
+          key: 'nimble.system.contact[sysContact]'
+          delay: 1h
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          tags:
+            - tag: component
+              value: system
+        - uuid: b93f120d65f44b17921ca693e67461ef
+          name: 'System description'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.1.0]'
+          key: 'nimble.system.descr[sysDescr]'
+          delay: 1h
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 765e8c5d71b44dd28079be3b514b2da9
+          name: 'System location'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.6.0]'
+          key: 'nimble.system.location[sysLocation]'
+          delay: 1h
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 72d7be108a57474b8be24af1c30039b0
+          name: 'System name'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.5.0]'
+          key: 'nimble.system.name[sysName]'
+          delay: 15m
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: ddab1b0cf7464105914f1d7ed939d64e
+              expression: 'last(/HPE Nimble Storage by SNMP/nimble.system.name[sysName],#1)<>last(/HPE Nimble Storage by SNMP/nimble.system.name[sysName],#2) and length(last(/HPE Nimble Storage by SNMP/nimble.system.name[sysName]))>0'
+              name: 'Nimble: System name has changed'
+              priority: INFO
+              manual_close: 'YES'
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: 48ef0e84f78b413a839804e3f9973b75
+          name: 'Uptime (network)'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.3.0]'
+          key: 'nimble.system.net.uptime[sysUpTime]'
+          history: 7d
+          value_type: FLOAT
+          units: uptime
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.01'
+          tags:
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 649286b80949417c903328be0fc6ffdb
+              expression: 'last(/HPE Nimble Storage by SNMP/nimble.system.net.uptime[sysUpTime])<10m'
+              name: 'Nimble: Device has been restarted'
+              priority: WARNING
+              description: 'Uptime is less than 10 minutes.'
+              tags:
+                - tag: scope
+                  value: notice
+        - uuid: 4446d2a74eab4a10910fc459e7788d28
+          name: 'System object ID'
+          type: SNMP_AGENT
+          snmp_oid: 'get[1.3.6.1.2.1.1.2.0]'
+          key: 'nimble.system.objectid[sysObjectID]'
+          delay: 1h
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          tags:
+            - tag: component
+              value: system
+        - uuid: 71c5726dd1994994aecda5baee179831
+          name: 'SNMP Trap: All Events'
+          type: SNMP_TRAP
+          key: nimble.trap.all
+          delay: '0'
+          history: 30d
+          value_type: LOG
+          trends: '0'
+          description: 'Catch-all trap.'
+          logtimefmt: 'hh:mm:sszyyyy/MM/dd'
+          tags:
+            - tag: component
+              value: trap
+        - uuid: 96e7ec30907f40a0b9b4e1167824438f
+          name: 'SNMP Trap: Hardware Alert'
+          type: SNMP_TRAP
+          key: nimble.trap.hardware
+          delay: '0'
+          history: 30d
+          value_type: LOG
+          trends: '0'
+          description: 'Hardware events (fan, PSU, disk). Configured traps on Nimble.'
+          logtimefmt: 'hh:mm:sszyyyy/MM/dd'
+          tags:
+            - tag: component
+              value: hardware
+            - tag: trap
+              value: hardware
+          triggers:
+            - uuid: 97fa9fab723648bcacc106fb640a4d34
+              expression: 'length(last(/HPE Nimble Storage by SNMP/nimble.trap.hardware))>0'
+              recovery_mode: NONE
+              name: 'Nimble: Hardware alert received via SNMP Trap'
+              priority: HIGH
+              tags:
+                - tag: component
+                  value: hardware
+        - uuid: 35daf7a7956443299212adc4a82c609c
+          name: 'SNMP agent availability'
+          type: INTERNAL
+          key: 'zabbix[host,snmp,available]'
+          history: 7d
+          valuemap:
+            name: zabbix.host.available
+          tags:
+            - tag: component
+              value: health
+            - tag: component
+              value: system
+          triggers:
+            - uuid: 4873dcdc131a4b9cbfa6e998d2c80168
+              expression: 'max(/HPE Nimble Storage by SNMP/zabbix[host,snmp,available],5m)=0'
+              name: 'Nimble: No SNMP data collection'
+              priority: WARNING
+              description: 'SNMP is not available for polling.'
+              tags:
+                - tag: scope
+                  value: availability
+      discovery_rules:
+        - uuid: 58d71f557abd41359876760a40f0f8d7
+          name: 'Network Interface Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#IF_NAME},1.3.6.1.2.1.2.2.1.2]'
+          key: nimble.if.discovery
+          delay: 1h
+          filter:
+            conditions:
+              - macro: '{#IF_NAME}'
+                value: ^lo$
+                operator: NOT_MATCHES_REGEX
+                formulaid: A
+          item_prototypes:
+            - uuid: 70018acf443445c293a78e5c5fc3af2b
+              name: 'Interface {#IF_NAME}: In'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.2.1.2.2.1.10.{#SNMPINDEX}]'
+              key: 'nimble.if.in_bps[{#SNMPINDEX}]'
+              history: 7d
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IF_NAME}'
+            - uuid: c3684fd30f624c66880e0b0eaa050ecf
+              name: 'Interface {#IF_NAME}: Out'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.2.1.2.2.1.16.{#SNMPINDEX}]'
+              key: 'nimble.if.out_bps[{#SNMPINDEX}]'
+              history: 7d
+              value_type: FLOAT
+              units: bps
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+                - type: MULTIPLIER
+                  parameters:
+                    - '8'
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IF_NAME}'
+            - uuid: 341bb941cbbc462eaff9e06aa5ddecd5
+              name: 'Interface {#IF_NAME}: Status'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.2.1.2.2.1.8.{#SNMPINDEX}]'
+              key: 'nimble.if.status[{#SNMPINDEX}]'
+              history: 7d
+              trends: '0'
+              valuemap:
+                name: 'IF-MIB::ifOperStatus'
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 10m
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#IF_NAME}'
+              trigger_prototypes:
+                - uuid: 3e779338c5104271a45eb4c0f70fc904
+                  expression: 'last(/HPE Nimble Storage by SNMP/nimble.if.status[{#SNMPINDEX}])=2'
+                  name: 'Interface {#IF_NAME}: Down'
+                  priority: AVERAGE
+                  tags:
+                    - tag: component
+                      value: network
+                    - tag: scope
+                      value: availability
+          trigger_prototypes:
+            - uuid: ee35657471164c3097261ab572fdfd98
+              expression: 'min(/HPE Nimble Storage by SNMP/nimble.if.in_bps[{#SNMPINDEX}],5m)>0 and min(/HPE Nimble Storage by SNMP/nimble.if.out_bps[{#SNMPINDEX}],5m)>0'
+              name: 'Interface {#IF_NAME}: High error rate'
+              status: DISABLED
+              priority: WARNING
+              tags:
+                - tag: component
+                  value: network
+                - tag: scope
+                  value: performance
+        - uuid: bf76c274bb6d4d44abdf97ee7649ec66
+          name: 'Volume Discovery'
+          type: SNMP_AGENT
+          snmp_oid: 'discovery[{#VOL_NAME},1.3.6.1.4.1.37447.1.2.1.3]'
+          key: nimble.vol.discovery
+          delay: 1h
+          item_prototypes:
+            - uuid: f78bb4867df24c978856780e8182b31c
+              name: 'Volume {#VOL_NAME}: Read IOPS'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.4.1.37447.1.2.1.13.{#SNMPINDEX}]'
+              key: 'nimble.vol.read_iops[{#SNMPINDEX}]'
+              history: 7d
+              value_type: FLOAT
+              units: '!iops'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+            - uuid: f806a4cb8d6a405fb5966c1ddab475f3
+              name: 'Volume {#VOL_NAME}: Size'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.4.1.37447.1.2.1.4.{#SNMPINDEX}]'
+              key: 'nimble.vol.size[{#SNMPINDEX}]'
+              delay: 5m
+              history: 7d
+              units: B
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '1048576'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+            - uuid: 918b9c20308a41298584ab2d4c3704e2
+              name: 'Volume {#VOL_NAME}: Status'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.4.1.37447.1.2.1.10.{#SNMPINDEX}]'
+              key: 'nimble.vol.status[{#SNMPINDEX}]'
+              history: 7d
+              valuemap:
+                name: 'Nimble Volume Status'
+              preprocessing:
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 10m
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+              trigger_prototypes:
+                - uuid: 70db4aaf446f4d429aff9fa3c149b46d
+                  expression: 'last(/HPE Nimble Storage by SNMP/nimble.vol.status[{#SNMPINDEX}])=2'
+                  name: 'Volume {#VOL_NAME}: is Offline'
+                  priority: HIGH
+                  tags:
+                    - tag: component
+                      value: volume
+                    - tag: scope
+                      value: availability
+            - uuid: 947c95ed5f3f4e30950e358494f2a71a
+              name: 'Volume {#VOL_NAME}: Used'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.4.1.37447.1.2.1.6.{#SNMPINDEX}]'
+              key: 'nimble.vol.used[{#SNMPINDEX}]'
+              delay: 5m
+              history: 7d
+              units: B
+              preprocessing:
+                - type: MULTIPLIER
+                  parameters:
+                    - '1048576'
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+            - uuid: 41c4339c7dd649fab7f1a0910fb541f4
+              name: 'Volume {#VOL_NAME}: Write IOPS'
+              type: SNMP_AGENT
+              snmp_oid: 'get[1.3.6.1.4.1.37447.1.2.1.34.{#SNMPINDEX}]'
+              key: 'nimble.vol.write_iops[{#SNMPINDEX}]'
+              history: 7d
+              value_type: FLOAT
+              units: '!iops'
+              preprocessing:
+                - type: CHANGE_PER_SECOND
+                  parameters:
+                    - ''
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+          trigger_prototypes:
+            - uuid: 9adceb3b036744bc872c80193404c313
+              expression: 'last(/HPE Nimble Storage by SNMP/nimble.vol.used[{#SNMPINDEX}])/last(/HPE Nimble Storage by SNMP/nimble.vol.size[{#SNMPINDEX}])*100>80'
+              name: 'Volume {#VOL_NAME}: Usage over 80%'
+              priority: WARNING
+              tags:
+                - tag: component
+                  value: volume
+                - tag: scope
+                  value: capacity
+      tags:
+        - tag: class
+          value: storage
+        - tag: target
+          value: hpe
+        - tag: target
+          value: nimble
+      valuemaps:
+        - uuid: 61d785d1f1d64d32864cf6e2fbb6b7f0
+          name: 'IF-MIB::ifOperStatus'
+          mappings:
+            - value: '1'
+              newvalue: up
+            - value: '2'
+              newvalue: down
+        - uuid: 07935fb650614d19a931f0832794c6b3
+          name: 'Nimble Volume Status'
+          mappings:
+            - value: '1'
+              newvalue: Online
+            - value: '2'
+              newvalue: Offline
+        - uuid: 7a0022a211a54fffa039263e59a8effb
+          name: zabbix.host.available
+          mappings:
+            - value: '0'
+              newvalue: 'not available'
+            - value: '1'
+              newvalue: available
+            - value: '2'
+              newvalue: unknown
