@@ -152,5 +152,5 @@ Trigger prototypes:
 
 ## Author
 
-Contributed by **chungnd2**  
+Contributed by **lucthienphong1120**  
 Tested on: HPE Nimble CS700 (Nimble OS 5.3), Zabbix 7.0
