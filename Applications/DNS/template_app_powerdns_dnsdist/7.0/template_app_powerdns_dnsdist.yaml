@@ -1,0 +1,3484 @@
+﻿zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Applications
+  templates:
+    - uuid: 4f20a43639ea4ca3b1fed1f8f5ee368d
+      template: 'PowerDNS dnsdist'
+      name: 'PowerDNS dnsdist'
+      description: |
+        Zabbix template to monitor PowerDNS dnsdist via its Prometheus metrics endpoint using Zabbix Agent 2.
+        
+        Collects all metrics through a single master item and extracts individual values with Prometheus preprocessing.
+        
+        Source: https://github.com/zabbix/community-templates/
+        
+        Author: Joël de Jager (rewrite), Manuel Frei (original)
+      groups:
+        - name: Templates/Applications
+      items:
+        - uuid: 4c6950f1d62a4df38092adae53cd062b
+          name: 'ACL Drops'
+          type: DEPENDENT
+          key: pdns.dnsdist.acl.drops
+          value_type: FLOAT
+          description: 'Number of packets dropped because of the ACL.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_acl_drops
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: security
+        - uuid: 17d9f8b8735f44ea813a887064357288
+          name: 'Cache Hits'
+          type: DEPENDENT
+          key: pdns.dnsdist.cache.hits
+          value_type: FLOAT
+          description: 'Number of times an answer was retrieved from cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_cache_hits
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 790057ace074415fa58143ce485bbc0d
+          name: 'Cache Misses'
+          type: DEPENDENT
+          key: pdns.dnsdist.cache.misses
+          value_type: FLOAT
+          description: 'Number of times an answer was not found in the cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_cache_misses
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: cache
+        - uuid: 81959dea1d2b452a838ed9e283722eb0
+          name: 'CPU I/O Wait'
+          type: DEPENDENT
+          key: pdns.dnsdist.cpu.iowait
+          value_type: FLOAT
+          description: 'Time spent waiting for I/O to complete by the whole system, in units of USER_HZ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_cpu_iowait
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: b785ee77aa3a4e048187493599999027
+          name: 'CPU Steal'
+          type: DEPENDENT
+          key: pdns.dnsdist.cpu.steal
+          value_type: FLOAT
+          description: 'Stolen time spent in other operating systems when running in a virtualized environment, in units of USER_HZ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_cpu_steal
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: f9dcd29b821e4d78a38fd0a71dd1b192
+          name: 'CPU System (ms)'
+          type: DEPENDENT
+          key: pdns.dnsdist.cpu.sys.msec
+          value_type: FLOAT
+          units: ms
+          description: 'Milliseconds spent by dnsdist in the system state.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_cpu_sys_msec
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: be3985feb55346fcad031e5cfed6c077
+          name: 'CPU User (ms)'
+          type: DEPENDENT
+          key: pdns.dnsdist.cpu.user.msec
+          value_type: FLOAT
+          units: ms
+          description: 'Milliseconds spent by dnsdist in the user state.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_cpu_user_msec
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 1b2c3d4e5f6a4b7f8a9b0c1d2e3f4a5b
+          name: 'DoH Query Pipe Full'
+          type: DEPENDENT
+          key: pdns.dnsdist.doh.query.pipe.full
+          value_type: FLOAT
+          description: 'Number of DoH queries dropped because the internal pipe used to distribute queries was full.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_doh_query_pipe_full
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doh
+            - tag: component
+              value: errors
+        - uuid: 2c3d4e5f6a7b4c8f9a0b1c2d3e4f5a6b
+          name: 'DoH Response Pipe Full'
+          type: DEPENDENT
+          key: pdns.dnsdist.doh.response.pipe.full
+          value_type: FLOAT
+          description: 'Number of DoH responses dropped because the internal pipe was full.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_doh_response_pipe_full
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doh
+            - tag: component
+              value: errors
+        - uuid: c3f2335b38054e698d91bdce8d9c792f
+          name: 'Downstream Send Errors'
+          type: DEPENDENT
+          key: pdns.dnsdist.downstream.send.errors
+          value_type: FLOAT
+          description: 'Number of errors when sending a query to a backend.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_downstream_send_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: downstream
+            - tag: component
+              value: errors
+        - uuid: 83a58ce5bb1b426c8fc0ea0a820414dc
+          name: 'Downstream Timeouts'
+          type: DEPENDENT
+          key: pdns.dnsdist.downstream.timeouts
+          value_type: FLOAT
+          description: 'Number of queries not answered in time by a backend.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_downstream_timeouts
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: downstream
+            - tag: component
+              value: errors
+          triggers:
+            - uuid: c2d3e4f5a6b74c8d9e0f1a2b3c4d5e6f
+              expression: 'last(/PowerDNS dnsdist/pdns.dnsdist.downstream.timeouts)>10'
+              name: 'High backend timeout rate'
+              priority: WARNING
+              description: 'More than 10 backend timeouts detected in the last polling interval.'
+              tags:
+                - tag: scope
+                  value: performance
+        - uuid: 725d9b46addc447baf486bc23babf202
+          name: 'Dynamic Block Entries'
+          type: DEPENDENT
+          key: pdns.dnsdist.dyn.block.nmg.size
+          description: 'Number of dynamic block entries.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_dyn_block_nmg_size
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: security
+        - uuid: f3a960c36c42463c852a8185f3198cb1
+          name: 'Dynamic Blocked'
+          type: DEPENDENT
+          key: pdns.dnsdist.dyn.blocked
+          value_type: FLOAT
+          description: 'Number of queries dropped because of a dynamic block.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_dyn_blocked
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: security
+        - uuid: d83400ab1cd844689735267f0c29005a
+          name: 'Empty Queries'
+          type: DEPENDENT
+          key: pdns.dnsdist.empty.queries
+          value_type: FLOAT
+          description: 'Number of empty queries received from clients.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_empty_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: a94de38c17dd42489f959beb3a937fb2
+          name: 'File Descriptors Used'
+          type: DEPENDENT
+          key: pdns.dnsdist.fd.usage
+          description: 'Number of currently used file descriptors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_fd_usage
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: performance
+        - uuid: 4f2067f83a6244e88c607bb5b4b3cf0d
+          name: 'Frontend NoError'
+          type: DEPENDENT
+          key: pdns.dnsdist.frontend.noerror
+          value_type: FLOAT
+          description: 'Number of NoError answers sent to clients.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_frontend_noerror
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: frontend
+        - uuid: fc5bcd8c5fa44fc2a3e934a42af3c5b2
+          name: 'Frontend NXDomain'
+          type: DEPENDENT
+          key: pdns.dnsdist.frontend.nxdomain
+          value_type: FLOAT
+          description: 'Number of NXDomain answers sent to clients.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_frontend_nxdomain
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: frontend
+        - uuid: 3e606db29edf4fe382bd76a6f85d6ea0
+          name: 'Frontend ServFail'
+          type: DEPENDENT
+          key: pdns.dnsdist.frontend.servfail
+          value_type: FLOAT
+          description: 'Number of ServFail answers sent to clients.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_frontend_servfail
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: errors
+            - tag: component
+              value: frontend
+        - uuid: 14d21be5bd1b4f20a548fb65ad20336a
+          name: 'Latency Avg (last 100)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.avg100
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 100 packets.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_avg100
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 528c00762e7947b792bb21459a3cdb4b
+          name: 'Latency Avg (last 1K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.avg1000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000 packets.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_avg1000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 4dfcda8896164839907e96094b6a6a07
+          name: 'Latency Avg (last 10K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.avg10000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 10,000 packets.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_avg10000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: bbc415cb858d4909bb8aabdb8e4b86fc
+          name: 'Latency Avg (last 1M)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.avg1000000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000,000 packets.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_avg1000000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 67b56430584f481589ad08374c087191
+          name: 'Latency DoH Avg (last 100)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doh.avg100
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 100 packets received over DoH.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doh_avg100
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doh
+            - tag: component
+              value: latency
+        - uuid: 0f74f03ca5904794b70ccee5d22b814a
+          name: 'Latency DoH Avg (last 1K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doh.avg1000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000 packets received over DoH.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doh_avg1000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doh
+            - tag: component
+              value: latency
+        - uuid: 1e2f3a4b5c6d4e7f8a9b0c1d2e3f4a5b
+          name: 'Latency DoH Avg (last 10K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doh.avg10000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 10,000 packets received over DoH.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doh_avg10000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doh
+            - tag: component
+              value: latency
+        - uuid: 2f3a4b5c6d7e4f8a9b0c1d2e3f4a5b6c
+          name: 'Latency DoH Avg (last 1M)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doh.avg1000000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000,000 packets received over DoH.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doh_avg1000000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doh
+            - tag: component
+              value: latency
+        - uuid: 8b37d4be546f4c88847e6c55f66005ed
+          name: 'Latency DoQ Avg (last 100)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doq.avg100
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 100 packets received over DoQ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doq_avg100
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doq
+            - tag: component
+              value: latency
+        - uuid: d5675d27bf8b4b9ea200ac0e09fda908
+          name: 'Latency DoQ Avg (last 1K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doq.avg1000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000 packets received over DoQ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doq_avg1000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doq
+            - tag: component
+              value: latency
+        - uuid: 3f768ae16f6e44ed8e613aa980ca58ba
+          name: 'Latency DoQ Avg (last 10K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doq.avg10000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 10,000 packets received over DoQ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doq_avg10000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doq
+            - tag: component
+              value: latency
+        - uuid: 4cb6b3237fc84d92b1a525ad6c3b6847
+          name: 'Latency DoQ Avg (last 1M)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.doq.avg1000000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000,000 packets received over DoQ.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_doq_avg1000000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: doq
+            - tag: component
+              value: latency
+        - uuid: de26f70432394d30a01e97c845878468
+          name: 'Latency DoT Avg (last 100)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.dot.avg100
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 100 packets received over DoT.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_dot_avg100
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: dot
+            - tag: component
+              value: latency
+        - uuid: 01889920479445dfb0ff0e9f6bd6d443
+          name: 'Latency DoT Avg (last 1K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.dot.avg1000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000 packets received over DoT.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_dot_avg1000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: dot
+            - tag: component
+              value: latency
+        - uuid: 0bfea8faa0ea491fb186f2935f9eef59
+          name: 'Latency DoT Avg (last 10K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.dot.avg10000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 10,000 packets received over DoT.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_dot_avg10000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: dot
+            - tag: component
+              value: latency
+        - uuid: 5744d2946cce43c581c1481cd4fc5bd9
+          name: 'Latency DoT Avg (last 1M)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.dot.avg1000000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000,000 packets received over DoT.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_dot_avg1000000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: dot
+            - tag: component
+              value: latency
+        - uuid: 781622eda08c488b846ae02d44c33493
+          name: 'Latency Slow (>1s)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.slow
+          value_type: FLOAT
+          description: 'Number of queries answered in more than 1 second.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_slow
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 1a2b3c4d5e6f4a7b8c9d0e1f2a3b4c5d
+          name: 'Latency TCP Avg (last 100)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.tcp.avg100
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 100 packets received over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_tcp_avg100
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+            - tag: component
+              value: tcp
+        - uuid: 2b3c4d5e6f7a4b8c9d0e1f2a3b4c5d6e
+          name: 'Latency TCP Avg (last 1K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.tcp.avg1000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000 packets received over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_tcp_avg1000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+            - tag: component
+              value: tcp
+        - uuid: 3547501c16e34011bf5b78c6d74e835a
+          name: 'Latency TCP Avg (last 10K)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.tcp.avg10000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 10,000 packets received over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_tcp_avg10000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+            - tag: component
+              value: tcp
+        - uuid: a41ce7269ad34a2f924505e693400fd0
+          name: 'Latency TCP Avg (last 1M)'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency.tcp.avg1000000
+          value_type: FLOAT
+          units: µs
+          description: 'Average response latency in microseconds of the last 1,000,000 packets received over TCP.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency_tcp_avg1000000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+            - tag: component
+              value: tcp
+        - uuid: a5d2e5fda56a41ae9f01b85778de88ea
+          name: 'Latency 0-1ms'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency0.1
+          value_type: FLOAT
+          description: 'Number of queries answered in less than 1 ms.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency0_1
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 97840d4163f34e2fb6cf7bd526b40a73
+          name: 'Latency 1-10ms'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency1.10
+          value_type: FLOAT
+          description: 'Number of queries answered in 1-10 ms.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency1_10
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 5fbdb2ee76d348e285627c8911998fd8
+          name: 'Latency 10-50ms'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency10.50
+          value_type: FLOAT
+          description: 'Number of queries answered in 10-50 ms.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency10_50
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 6e772ac71f0848f8b2f16b181093c4eb
+          name: 'Latency 50-100ms'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency50.100
+          value_type: FLOAT
+          description: 'Number of queries answered in 50-100 ms.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency50_100
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: a63f6f5fcec341a99fec813cf3d19e90
+          name: 'Latency 100-1000ms'
+          type: DEPENDENT
+          key: pdns.dnsdist.latency100.1000
+          value_type: FLOAT
+          description: 'Number of queries answered in 100-1000 ms.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_latency100_1000
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: latency
+        - uuid: 76e656b90313457fac337a444508d683
+          name: 'Memory Usage'
+          type: DEPENDENT
+          key: pdns.dnsdist.memory.usage
+          units: B
+          description: 'Current memory usage in bytes.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_real_memory_usage
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: overview
+            - tag: component
+              value: performance
+          triggers:
+            - uuid: eb98f919cef34461a8ee91dbb78a583b
+              expression: 'last(/PowerDNS dnsdist/pdns.dnsdist.memory.usage)>1073741824'
+              name: 'High memory usage (>1 GB)'
+              priority: WARNING
+              description: 'dnsdist memory usage exceeds 1 GB.'
+              tags:
+                - tag: scope
+                  value: performance
+        - uuid: 7022ec41e147430c8b5c009a167ebd33
+          name: 'Prometheus Metrics'
+          type: ZABBIX_ACTIVE
+          key: pdns.dnsdist.metrics
+          delay: 30s
+          history: '0'
+          value_type: TEXT
+          description: 'Raw Prometheus metrics collected from the dnsdist /metrics endpoint via curl UserParameter.'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: fcdb55ab7a3e4311bcba9e3056f79af9
+          name: 'No Policy'
+          type: DEPENDENT
+          key: pdns.dnsdist.no.policy
+          value_type: FLOAT
+          description: 'Number of queries dropped because no server was available.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_no_policy
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: errors
+          triggers:
+            - uuid: b1c2d3e4f5a64b7c8d9e0f1a2b3c4d5e
+              expression: 'last(/PowerDNS dnsdist/pdns.dnsdist.no.policy)>0'
+              name: 'Queries dropped — no backend available'
+              priority: HIGH
+              description: 'Queries are being dropped because no backend server is available.'
+              tags:
+                - tag: scope
+                  value: availability
+        - uuid: d38967f183604d4dab648ba765332602
+          name: 'Noncompliant Queries'
+          type: DEPENDENT
+          key: pdns.dnsdist.noncompliant.queries
+          value_type: FLOAT
+          description: 'Number of queries dropped as non-compliant.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_noncompliant_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: f065f86f8dca400bb20a2159122aa6e1
+          name: 'Noncompliant Responses'
+          type: DEPENDENT
+          key: pdns.dnsdist.noncompliant.responses
+          value_type: FLOAT
+          description: 'Number of answers from a backend dropped as non-compliant.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_noncompliant_responses
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 43250be3050a4c2f893d3441c2b97b3c
+          name: 'Pool Active Servers'
+          type: DEPENDENT
+          key: pdns.dnsdist.pool.active.servers
+          description: 'Number of available servers in the default pool.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'dnsdist_pool_active_servers{pool="_default_"}'
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: pool
+        - uuid: 5fa9955875b24aee8f7450cda4078177
+          name: 'Pool Cache Entries'
+          type: DEPENDENT
+          key: pdns.dnsdist.pool.cache.entries
+          description: 'Number of entries currently present in the default pool cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'dnsdist_pool_cache_entries{pool="_default_"}'
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: cache
+            - tag: component
+              value: pool
+        - uuid: c10fd347bf1842e3a0e4d8cc34d043d5
+          name: 'Pool Cache Hits'
+          type: DEPENDENT
+          key: pdns.dnsdist.pool.cache.hits
+          value_type: FLOAT
+          description: 'Number of hits from the default pool cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'dnsdist_pool_cache_hits{pool="_default_"}'
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: cache
+            - tag: component
+              value: pool
+        - uuid: 4e23b202c3a74914840238a4878324d4
+          name: 'Pool Cache Misses'
+          type: DEPENDENT
+          key: pdns.dnsdist.pool.cache.misses
+          value_type: FLOAT
+          description: 'Number of misses from the default pool cache.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'dnsdist_pool_cache_misses{pool="_default_"}'
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: cache
+            - tag: component
+              value: pool
+        - uuid: 6623541a117246689901079ebab91fef
+          name: 'Pool Cache Size'
+          type: DEPENDENT
+          key: pdns.dnsdist.pool.cache.size
+          description: 'Maximum number of entries the default pool cache can hold.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'dnsdist_pool_cache_size{pool="_default_"}'
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: cache
+            - tag: component
+              value: pool
+        - uuid: 80066d31fe7a4ccbb9c6df9a55dd8929
+          name: 'Pool Servers'
+          type: DEPENDENT
+          key: pdns.dnsdist.pool.servers
+          description: 'Number of servers in the default pool.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - 'dnsdist_pool_servers{pool="_default_"}'
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: pool
+        - uuid: a2b3c4d5e6f74a8b9c0d1e2f3a4b5c6d
+          name: 'Proxy Protocol Invalid'
+          type: DEPENDENT
+          key: pdns.dnsdist.proxy.protocol.invalid
+          value_type: FLOAT
+          description: 'Number of queries dropped because of an invalid Proxy Protocol header.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_proxy_protocol_invalid
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 622aa4f76d054a1e96b7138dd4cfea11
+          name: Queries
+          type: DEPENDENT
+          key: pdns.dnsdist.queries
+          value_type: FLOAT
+          description: 'Number of received queries.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_queries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: overview
+            - tag: component
+              value: queries
+        - uuid: 581bda041ad146749120b3f70bec5e38
+          name: 'RD Queries'
+          type: DEPENDENT
+          key: pdns.dnsdist.rdqueries
+          value_type: FLOAT
+          description: 'Number of received queries with the recursion desired bit set.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_rdqueries
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: queries
+        - uuid: 2a24058505c04612a4e5aa056f1ee78c
+          name: Responses
+          type: DEPENDENT
+          key: pdns.dnsdist.responses
+          value_type: FLOAT
+          description: 'Number of responses received from backends.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_responses
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: overview
+            - tag: component
+              value: responses
+        - uuid: 54353f873ded4d06952189f07cde4bb1
+          name: 'Rule Drop'
+          type: DEPENDENT
+          key: pdns.dnsdist.rule.drop
+          value_type: FLOAT
+          description: 'Number of queries dropped because of a rule.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_rule_drop
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: rules
+        - uuid: c0823dbd196e4807b6e335a8ace7928b
+          name: 'Rule NXDomain'
+          type: DEPENDENT
+          key: pdns.dnsdist.rule.nxdomain
+          value_type: FLOAT
+          description: 'Number of NXDomain answers returned because of a rule.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_rule_nxdomain
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: rules
+        - uuid: 8a77639e3c4d464cb55dd5e303276531
+          name: 'Rule Refused'
+          type: DEPENDENT
+          key: pdns.dnsdist.rule.refused
+          value_type: FLOAT
+          description: 'Number of Refused answers returned because of a rule.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_rule_refused
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: rules
+        - uuid: 2063731eb9254fb1a0ac3dacfd5ceb9d
+          name: 'Rule ServFail'
+          type: DEPENDENT
+          key: pdns.dnsdist.rule.servfail
+          value_type: FLOAT
+          description: 'Number of ServFail answers returned because of a rule.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_rule_servfail
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: rules
+        - uuid: a1b2c3d4e5f64a7b8c9d0e1f2a3b4c5d
+          name: 'Rule Truncated'
+          type: DEPENDENT
+          key: pdns.dnsdist.rule.truncated
+          value_type: FLOAT
+          description: 'Number of truncated answers returned because of a rule.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_rule_truncated
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: rules
+        - uuid: e558cca30b7a432cbba81317e228d345
+          name: 'Security Status'
+          type: DEPENDENT
+          key: pdns.dnsdist.security.status
+          description: |
+            Security status of dnsdist (regularly polled).
+            0 = Unknown / unreleased, 1 = OK, 2 = Upgrade recommended, 3 = Upgrade required.
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_security_status
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: security
+          triggers:
+            - uuid: 4d4425a0c820455ea7a16dc4ed46ac93
+              expression: 'last(/PowerDNS dnsdist/pdns.dnsdist.security.status)>=2'
+              name: 'dnsdist upgrade recommended or required'
+              priority: WARNING
+              description: 'Security status indicates an upgrade is recommended (2) or required (3).'
+              tags:
+                - tag: scope
+                  value: security
+        - uuid: f6b234596fba441c8c7c113aca15a09d
+          name: Self-Answered
+          type: DEPENDENT
+          key: pdns.dnsdist.self.answered
+          value_type: FLOAT
+          description: 'Number of self-answered responses.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_self_answered
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: responses
+        - uuid: 52629a3960c041ba815001bce637ae87
+          name: 'ServFail Responses'
+          type: DEPENDENT
+          key: pdns.dnsdist.servfail.responses
+          value_type: FLOAT
+          description: 'Number of SERVFAIL answers received from backends.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_servfail_responses
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: errors
+            - tag: component
+              value: responses
+        - uuid: 4975f72617c548148971d5afb816f3fc
+          name: 'TCP Listen Overflows'
+          type: DEPENDENT
+          key: pdns.dnsdist.tcp.listen.overflows
+          value_type: FLOAT
+          description: 'From /proc/net/netstat ListenOverflows.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_tcp_listen_overflows
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: network
+        - uuid: fb6bfeff3050487ba827c0c5871b4b9b
+          name: 'Truncation Failures'
+          type: DEPENDENT
+          key: pdns.dnsdist.trunc.failures
+          value_type: FLOAT
+          description: 'Number of errors encountered while truncating an answer.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_trunc_failures
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: errors
+        - uuid: 765a28a9c7184b9f8e244da79865ddb9
+          name: 'UDP InCsumErrors'
+          type: DEPENDENT
+          key: pdns.dnsdist.udp.in.csum.errors
+          value_type: FLOAT
+          description: 'From /proc/net/snmp InCsumErrors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_udp_in_csum_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: network
+        - uuid: b6347fdf0dca4c77b92024d85ee80a66
+          name: 'UDP InErrors'
+          type: DEPENDENT
+          key: pdns.dnsdist.udp.in.errors
+          value_type: FLOAT
+          description: 'From /proc/net/snmp InErrors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_udp_in_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: network
+        - uuid: b3bb1df9dbe946ea959f5aed8f3881e9
+          name: 'UDP NoPorts'
+          type: DEPENDENT
+          key: pdns.dnsdist.udp.noport.errors
+          value_type: FLOAT
+          description: 'From /proc/net/snmp NoPorts.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_udp_noport_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: network
+        - uuid: 16bcbef0ad4544c5ae04175dac882b6c
+          name: 'UDP RcvbufErrors'
+          type: DEPENDENT
+          key: pdns.dnsdist.udp.recvbuf.errors
+          value_type: FLOAT
+          description: 'From /proc/net/snmp RcvbufErrors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_udp_recvbuf_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: network
+        - uuid: 0c22c18a532744d08001037546ca8c89
+          name: 'UDP SndbufErrors'
+          type: DEPENDENT
+          key: pdns.dnsdist.udp.sndbuf.errors
+          value_type: FLOAT
+          description: 'From /proc/net/snmp SndbufErrors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_udp_sndbuf_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: network
+        - uuid: 7f4512108cf84ff2a43293874737bce5
+          name: 'UDP6 InErrors'
+          type: DEPENDENT
+          key: pdns.dnsdist.udp6.in.errors
+          value_type: FLOAT
+          description: 'From /proc/net/snmp6 Udp6InErrors.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_udp6_in_errors
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+            - type: SIMPLE_CHANGE
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: network
+        - uuid: 1385272d8c194eb4ada6e1f03ac80034
+          name: Uptime
+          type: DEPENDENT
+          key: pdns.dnsdist.uptime
+          units: s
+          description: 'Uptime of the dnsdist process in seconds.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_uptime
+                - value
+                - ''
+              error_handler: CUSTOM_VALUE
+              error_handler_params: '0'
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: overview
+        - uuid: e1674f6879fc431eaf5d412215bd9b02
+          name: Version
+          type: DEPENDENT
+          key: pdns.dnsdist.version
+          value_type: TEXT
+          description: 'Running dnsdist version.'
+          preprocessing:
+            - type: PROMETHEUS_PATTERN
+              parameters:
+                - dnsdist_info
+                - label
+                - version
+              error_handler: CUSTOM_VALUE
+              error_handler_params: unknown
+          master_item:
+            key: pdns.dnsdist.metrics
+          tags:
+            - tag: component
+              value: overview
+        - uuid: da5d07f0bdc4492aba8a8ea0eed70447
+          name: 'dnsdist Process'
+          type: ZABBIX_ACTIVE
+          key: 'proc.num[,,,dnsdist]'
+          delay: 60s
+          description: 'Number of running dnsdist processes.'
+          valuemap:
+            name: 'Service Status'
+          tags:
+            - tag: component
+              value: process
+          triggers:
+            - uuid: 41084f94d125465ba7e5ab72816af300
+              expression: 'last(/PowerDNS dnsdist/proc.num[,,,dnsdist])=0'
+              name: 'dnsdist process not running'
+              priority: HIGH
+              description: 'The dnsdist process is not running on this host.'
+              tags:
+                - tag: scope
+                  value: availability
+      discovery_rules:
+        - uuid: a1b2c3d4e5f64718bc9d0e1f2a3b4c5d
+          name: 'Backend Server Discovery'
+          type: DEPENDENT
+          key: pdns.dnsdist.server.discovery
+          description: 'Discovers backend servers reported by dnsdist Prometheus metrics.'
+          item_prototypes:
+            - uuid: f6a7b8c9d0e14c63ab4c5d6e7f8a9b0c
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Drops'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.drops[{#SERVER},{#ADDRESS}]'
+              value_type: FLOAT
+              description: 'Amount of queries not answered by this server.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_drops{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: SIMPLE_CHANGE
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: f2a3b4c5d6e74c29ab0c1d2e3f4a5b6c
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Health Check Failures'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.healthcheckfailures[{#SERVER},{#ADDRESS}]'
+              value_type: FLOAT
+              description: 'Number of health check attempts that failed (total).'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_healthcheckfailures{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: SIMPLE_CHANGE
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: a7b8c9d0e1f24d74bc5d6e7f8a9b0c1d
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Latency'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.latency[{#SERVER},{#ADDRESS}]'
+              value_type: FLOAT
+              units: ms
+              description: 'Server latency when answering queries in milliseconds.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_latency{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: 188f33a575a14538ae6248a87375a641
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Outstanding'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.outstanding[{#SERVER},{#ADDRESS}]'
+              description: 'Current number of queries waiting for a backend response.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_outstanding{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: 4c2dd2e873a44353a8f498c4c2d60262
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Queries'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.queries[{#SERVER},{#ADDRESS}]'
+              value_type: FLOAT
+              description: 'Amount of queries relayed to this server.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_queries{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: SIMPLE_CHANGE
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: 55f57696c61c4d2ca35fb2412a22951b
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Responses'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.responses[{#SERVER},{#ADDRESS}]'
+              value_type: FLOAT
+              description: 'Amount of responses received from this server.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_responses{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: SIMPLE_CHANGE
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: ca56f4646ccf42c8bad03f4dbca4539e
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Send Errors'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.senderrors[{#SERVER},{#ADDRESS}]'
+              value_type: FLOAT
+              description: 'Total number of OS send errors while relaying queries.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_senderrors{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+                - type: SIMPLE_CHANGE
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: c471f3e4c09542ef8e284f9ea351ab06
+              name: 'Backend {#SERVER} [{#ADDRESS}]: Status'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.status[{#SERVER},{#ADDRESS}]'
+              description: 'Whether this backend is up (1) or down (0).'
+              valuemap:
+                name: 'Backend Status'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_status{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+              trigger_prototypes:
+                - uuid: b3f51c7451c14e6eae2724514a3ebea2
+                  expression: 'last(/PowerDNS dnsdist/pdns.dnsdist.server.status[{#SERVER},{#ADDRESS}])=0'
+                  name: 'Backend {#SERVER} [{#ADDRESS}] is DOWN'
+                  priority: HIGH
+                  description: 'Backend server {#SERVER} at {#ADDRESS} is not responding.'
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: a4e35267260949bf83b192cf033053f7
+              name: 'Backend {#SERVER} [{#ADDRESS}]: TCP Current Connections'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.tcpcurrentconnections[{#SERVER},{#ADDRESS}]'
+              description: 'The number of current TCP connections.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_tcpcurrentconnections{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+            - uuid: 95eedeeba14546789cb7d9caad509349
+              name: 'Backend {#SERVER} [{#ADDRESS}]: TCP Latency'
+              type: DEPENDENT
+              key: 'pdns.dnsdist.server.tcplatency[{#SERVER},{#ADDRESS}]'
+              value_type: FLOAT
+              units: ms
+              description: 'Server latency when answering TCP questions in milliseconds.'
+              preprocessing:
+                - type: PROMETHEUS_PATTERN
+                  parameters:
+                    - 'dnsdist_server_tcplatency{server="{#SERVER}",address="{#ADDRESS}"}'
+                    - value
+                    - ''
+                  error_handler: CUSTOM_VALUE
+                  error_handler_params: '0'
+              master_item:
+                key: pdns.dnsdist.metrics
+              tags:
+                - tag: backend
+                  value: '{#SERVER}'
+                - tag: component
+                  value: backend
+          master_item:
+            key: pdns.dnsdist.metrics
+          lld_macro_paths:
+            - lld_macro: '{#ADDRESS}'
+              path: $.labels.address
+            - lld_macro: '{#SERVER}'
+              path: $.labels.server
+          preprocessing:
+            - type: PROMETHEUS_TO_JSON
+              parameters:
+                - dnsdist_server_status
+      dashboards:
+        - uuid: 37588c466b954aa691e18d7bbfbfe977
+          name: 'PowerDNS dnsdist'
+          auto_start: 'NO'
+          pages:
+            - name: Overview
+              widgets:
+                - type: item
+                  name: Status
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Status
+                    - type: STRING
+                      name: desc_color
+                      value: FFFFFF
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: 'proc.num[,,,dnsdist]'
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: STRING
+                      name: thresholds.0.color
+                      value: E64A19
+                    - type: STRING
+                      name: thresholds.0.threshold
+                      value: '0'
+                    - type: STRING
+                      name: thresholds.1.color
+                      value: 388E3C
+                    - type: STRING
+                      name: thresholds.1.threshold
+                      value: '1'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: STRING
+                      name: value_color
+                      value: FFFFFF
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Queries & Responses'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: Queries
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: Responses
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: Self-Answered
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Query Details'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Empty Queries'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Frontend ServFail'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'RD Queries'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: Version
+                  x: '12'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Version
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.version
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: Uptime
+                  x: '24'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Uptime
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.uptime
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: Memory
+                  x: '36'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Memory
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.memory.usage
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Frontend Answers'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Frontend NoError'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Frontend NXDomain'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Frontend ServFail'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Downstream Errors'
+                  x: '36'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Downstream Send Errors'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Downstream Timeouts'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'No Policy'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Truncation Failures'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'Pool Servers'
+                  x: '48'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Pool Servers'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.pool.servers
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: 'Active Servers'
+                  x: '60'
+                  width: '12'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Active Servers'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.pool.active.servers
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+            - name: Cache
+              widgets:
+                - type: item
+                  name: 'Pool Cache Entries'
+                  width: '36'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Pool Cache Entries'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.pool.cache.entries
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Global Cache Hits / Misses'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Cache Hits'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Cache Misses'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'Pool Cache Size'
+                  x: '36'
+                  width: '36'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Pool Cache Size'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.pool.cache.size
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Pool Cache Hits / Misses'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Pool Cache Hits'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Pool Cache Misses'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+            - name: Latency
+              widgets:
+                - type: svggraph
+                  name: 'Latency Distribution'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Latency 0-1ms'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Latency 1-10ms'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Latency 10-50ms'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Latency 50-100ms'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'Latency 100-1000ms'
+                    - type: STRING
+                      name: ds.0.items.5
+                      value: 'Latency Slow (>1s)'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Average Latency (TCP)'
+                  'y': '5'
+                  width: '18'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Latency TCP Avg (last 1K)'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Latency TCP Avg (last 1M)'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Latency TCP Avg (last 10K)'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Latency TCP Avg (last 100)'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Average Latency (DoT)'
+                  x: '18'
+                  'y': '5'
+                  width: '18'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Latency DoT Avg (last 1K)'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Latency DoT Avg (last 1M)'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Latency DoT Avg (last 10K)'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Latency DoT Avg (last 100)'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Average Latency (UDP)'
+                  x: '36'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Latency 0-1ms'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Latency 1-10ms'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Latency 10-50ms'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Latency 50-100ms'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'Latency 100-1000ms'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Average Latency (DoH)'
+                  x: '36'
+                  'y': '5'
+                  width: '18'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Latency DoH Avg (last 1K)'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Latency DoH Avg (last 1M)'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Latency DoH Avg (last 10K)'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Latency DoH Avg (last 100)'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Average Latency (DoQ)'
+                  x: '54'
+                  'y': '5'
+                  width: '18'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Latency DoQ Avg (last 1K)'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Latency DoQ Avg (last 1M)'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Latency DoQ Avg (last 10K)'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Latency DoQ Avg (last 100)'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+            - name: Security
+              widgets:
+                - type: item
+                  name: 'Security Status'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Security Status'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.security.status
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Security Events'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'ACL Drops'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Dynamic Blocked'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Noncompliant Queries'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Noncompliant Responses'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'Proxy Protocol Invalid'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'Dynamic Block Entries'
+                  x: '18'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Dynamic Block Entries'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.dyn.blocked
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: 'Pool Servers'
+                  x: '36'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Pool Servers'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.pool.servers
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Rule Actions'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Rule Drop'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'Rule NXDomain'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'Rule Refused'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Rule ServFail'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'Rule Truncated'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'Active Servers'
+                  x: '54'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'Active Servers'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.pool.active.servers
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+            - name: Performance
+              widgets:
+                - type: item
+                  name: 'File Descriptors'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'File Descriptors'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.fd.usage
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'CPU Usage'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'CPU I/O Wait'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'CPU Steal'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'CPU System (ms)'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'CPU User (ms)'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'Network Errors'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'TCP Listen Overflows'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'UDP6 InErrors'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'UDP InCsumErrors'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'UDP InErrors'
+                    - type: STRING
+                      name: ds.0.items.4
+                      value: 'UDP NoPorts'
+                    - type: STRING
+                      name: ds.0.items.5
+                      value: 'UDP RcvbufErrors'
+                    - type: STRING
+                      name: ds.0.items.6
+                      value: 'UDP SndbufErrors'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: Memory
+                  x: '18'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: Memory
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.memory.usage
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: item
+                  name: 'CPU I/O Wait'
+                  x: '36'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'CPU I/O Wait'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.cpu.iowait
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+                - type: svggraph
+                  name: 'Memory Usage'
+                  x: '36'
+                  'y': '1'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'Memory Usage'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: svggraph
+                  name: 'DoH Pipe & Drops'
+                  x: '36'
+                  'y': '6'
+                  width: '36'
+                  height: '5'
+                  fields:
+                    - type: INTEGER
+                      name: ds.0.color_palette
+                      value: '0'
+                    - type: STRING
+                      name: ds.0.items.0
+                      value: 'DoH Query Pipe Full'
+                    - type: STRING
+                      name: ds.0.items.1
+                      value: 'DoH Response Pipe Full'
+                    - type: STRING
+                      name: ds.0.items.2
+                      value: 'No Policy'
+                    - type: STRING
+                      name: ds.0.items.3
+                      value: 'Truncation Failures'
+                    - type: INTEGER
+                      name: righty
+                      value: '0'
+                - type: item
+                  name: 'CPU Steal'
+                  x: '54'
+                  width: '18'
+                  height: '1'
+                  hide_header: 'YES'
+                  fields:
+                    - type: INTEGER
+                      name: decimal_places
+                      value: '0'
+                    - type: INTEGER
+                      name: decimal_size
+                      value: '70'
+                    - type: STRING
+                      name: description
+                      value: 'CPU Steal'
+                    - type: INTEGER
+                      name: desc_size
+                      value: '40'
+                    - type: INTEGER
+                      name: desc_v_pos
+                      value: '0'
+                    - type: ITEM
+                      name: itemid.0
+                      value:
+                        host: 'PowerDNS dnsdist'
+                        key: pdns.dnsdist.cpu.steal
+                    - type: INTEGER
+                      name: show.0
+                      value: '1'
+                    - type: INTEGER
+                      name: show.1
+                      value: '2'
+                    - type: INTEGER
+                      name: show.2
+                      value: '4'
+                    - type: INTEGER
+                      name: units_bold
+                      value: '0'
+                    - type: INTEGER
+                      name: units_show
+                      value: '0'
+                    - type: INTEGER
+                      name: value_size
+                      value: '70'
+                    - type: INTEGER
+                      name: value_v_pos
+                      value: '2'
+      valuemaps:
+        - uuid: 6480befdea334b48b28ef27840573d2e
+          name: 'Backend Status'
+          mappings:
+            - value: '0'
+              newvalue: Down
+            - value: '1'
+              newvalue: Up
+        - uuid: e3ca6f2b4dbc44ebaa205b99e138f8f8
+          name: 'Service Status'
+          mappings:
+            - value: '0'
+              newvalue: Offline
+            - value: '1'
+              newvalue: Online
+  graphs:
+    - uuid: 339631d229bc45c3bdace131d3a63b4e
+      name: 'Average Latency (DoH)'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doh.avg100
+        - sortorder: '1'
+          color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doh.avg1000
+        - sortorder: '2'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doh.avg10000
+        - sortorder: '3'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doh.avg1000000
+    - uuid: c90a3ab5884f443989bd977d132114dc
+      name: 'Average Latency (DoQ)'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doq.avg100
+        - sortorder: '1'
+          color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doq.avg1000
+        - sortorder: '2'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doq.avg10000
+        - sortorder: '3'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.doq.avg1000000
+    - uuid: 2b8e12b7c06e4bef9e42c53cb5f5388b
+      name: 'Average Latency (DoT)'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.dot.avg100
+        - sortorder: '1'
+          color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.dot.avg1000
+        - sortorder: '2'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.dot.avg10000
+        - sortorder: '3'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.dot.avg1000000
+    - uuid: 6f14263900734a70a6cc7a67fcdf9dfb
+      name: 'Average Latency (TCP)'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.tcp.avg100
+        - sortorder: '1'
+          color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.tcp.avg1000
+        - sortorder: '2'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.tcp.avg10000
+        - sortorder: '3'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.tcp.avg1000000
+    - uuid: 517f007e6f374693a2ac0de9a0ae549d
+      name: 'Average Latency (UDP)'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.avg100
+        - sortorder: '1'
+          color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.avg1000
+        - sortorder: '2'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.avg10000
+        - sortorder: '3'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.avg1000000
+    - uuid: 1ad6ce8156d34b2bb0fd69cca320bd3f
+      name: 'CPU Usage'
+      graph_items:
+        - color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.cpu.user.msec
+        - sortorder: '1'
+          color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.cpu.sys.msec
+        - sortorder: '2'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.cpu.iowait
+        - sortorder: '3'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.cpu.steal
+    - uuid: 658f877b622f4c67b90e9f16e49fc244
+      name: 'DoH Pipe & Drops'
+      graph_items:
+        - color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.doh.query.pipe.full
+        - sortorder: '1'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.doh.response.pipe.full
+        - sortorder: '2'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.no.policy
+        - sortorder: '3'
+          color: FC6EA3
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.trunc.failures
+    - uuid: 0288e7320f644866a2b6af3fe1466a1f
+      name: 'Downstream Errors'
+      graph_items:
+        - color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.downstream.timeouts
+        - sortorder: '1'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.downstream.send.errors
+        - sortorder: '2'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.no.policy
+        - sortorder: '3'
+          color: FC6EA3
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.trunc.failures
+    - uuid: 0f3fe1365ba74c408098dd514253ef6a
+      name: 'Frontend Answers'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.frontend.noerror
+        - sortorder: '1'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.frontend.nxdomain
+        - sortorder: '2'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.frontend.servfail
+    - uuid: e98efb32bda9445f80bec1b97d392ec7
+      name: 'Global Cache Hits / Misses'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.cache.hits
+        - sortorder: '1'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.cache.misses
+    - uuid: 1b35052e789d4a14a645806d671b5d50
+      name: 'Latency Distribution'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency0.1
+        - sortorder: '1'
+          color: 22A2EA
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency1.10
+        - sortorder: '2'
+          color: F6C32C
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency10.50
+        - sortorder: '3'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency50.100
+        - sortorder: '4'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency100.1000
+        - sortorder: '5'
+          color: 611F27
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.latency.slow
+    - uuid: 8c0d5c823b4342cb908c0a6b1b65ea78
+      name: 'Memory Usage'
+      graph_items:
+        - color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.memory.usage
+    - uuid: 6d0f7870532a4f9c8cedc972bbd72ff5
+      name: 'Network Errors'
+      graph_items:
+        - color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.udp.in.errors
+        - sortorder: '1'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.udp.noport.errors
+        - sortorder: '2'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.udp.recvbuf.errors
+        - sortorder: '3'
+          color: FC6EA3
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.udp.sndbuf.errors
+        - sortorder: '4'
+          color: AC8C14
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.udp.in.csum.errors
+        - sortorder: '5'
+          color: 611F27
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.udp6.in.errors
+        - sortorder: '6'
+          color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.tcp.listen.overflows
+    - uuid: 48e332cb8d0e4c1c8932ccad39e2f53f
+      name: 'Pool Cache Hits / Misses'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.pool.cache.hits
+        - sortorder: '1'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.pool.cache.misses
+    - uuid: ca058af676074311a695e64755166396
+      name: 'Queries & Responses'
+      graph_items:
+        - color: 1A7C11
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.queries
+        - sortorder: '1'
+          color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.responses
+        - sortorder: '2'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.self.answered
+    - uuid: 9420882219f34b369c9cb402b4c9afed
+      name: 'Query Details'
+      graph_items:
+        - color: 2774A4
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.rdqueries
+        - sortorder: '1'
+          color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.empty.queries
+        - sortorder: '2'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.servfail.responses
+    - uuid: 971d3451fe0148de83c404a6740da735
+      name: 'Rule Actions'
+      graph_items:
+        - color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.rule.drop
+        - sortorder: '1'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.rule.nxdomain
+        - sortorder: '2'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.rule.refused
+        - sortorder: '3'
+          color: FC6EA3
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.rule.servfail
+        - sortorder: '4'
+          color: AC8C14
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.rule.truncated
+    - uuid: e81e95a0746c4509b3a8c430a0720270
+      name: 'Security Events'
+      graph_items:
+        - color: F63100
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.acl.drops
+        - sortorder: '1'
+          color: A54F10
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.dyn.blocked
+        - sortorder: '2'
+          color: 6C59DC
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.noncompliant.queries
+        - sortorder: '3'
+          color: FC6EA3
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.noncompliant.responses
+        - sortorder: '4'
+          color: AC8C14
+          item:
+            host: 'PowerDNS dnsdist'
+            key: pdns.dnsdist.proxy.protocol.invalid
