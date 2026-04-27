@@ -1,0 +1,1143 @@
+zabbix_export:
+  version: '6.0'
+  date: '2026-04-23T23:01:25Z'
+  groups:
+    - uuid: 9cd0dddb7d144ac7bfe52afd4f95f6ab
+      name: Infrastructure/Power
+  templates:
+    - uuid: f5ce567f2bac449c98750b2f41d9e0ba
+      template: 'SNMP Riello Netman208c MTA 16A'
+      name: 'SNMP Riello Netman208c MTA 16A'
+      description: |
+        ## Overview
+        
+        Template for Riello MTS / MTA 16A Automatic Transfer Switch (ATS) monitored via
+        SNMP using the RIELLOMTS-MIB (rielloMIB.mtsMIB = .1.3.6.1.4.1.5491.12).
+        
+        All OIDs are numeric to avoid any MIB dependency on the Zabbix server.
+        
+        Covers:
+        * Full inventory (mtsIdent)
+        * Electrical measurements: voltages S1/S2, frequencies S1/S2, output current, load %, phase difference
+        * Device internal temperature
+        * Active source tracking for Zabbix Maps (mtsOnSourceS1 / mtsOnSourceS2)
+        * Transfer state: preferred source, transfer inhibit, non-synch inhibit, locked, sync bad
+        * All source quality alarms: blackout, phase sequence, voltage tolerance, frequency, balance
+        * All hardware fault alarms: SCR loss (S1/S2/output), input switches, MCCB trips, manual bypass
+        * General alarms: temperature, overload, general failure
+        
+        Triggers cover DISASTER through INFO levels.
+        
+        
+        ## Author
+        Derived from Eaton ATS template (Original author Maurice Flier), 
+        converted and extended for Riello MTS.
+      groups:
+        - name: Infrastructure/Power
+      items:
+        - uuid: 034bf57904cb47008df282c7905786f2
+          name: 'MTS Overload Alarm'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.43.0
+          key: mtsAlarmOverload
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsAlarmOverload.0 - 1= yes (output is overloaded; current exceeds the nominal rating), 0= no. Check mtsLoadL1 (.12.2.10.0) and mtsOutputCurrentL1 (.12.2.13.0).'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 7b545a48b50d4646894c58e74ff83f5c
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsAlarmOverload)=1'
+              name: '{HOST.NAME} - Overload Alarm Detected'
+              opdata: 'Load: {ITEM.LASTVALUE2} %  Current: {ITEM.LASTVALUE3} A'
+              priority: AVERAGE
+              description: 'The output current has exceeded the nominal rating of the device. Reduce the load or investigate which connected equipment is drawing excessive current. Risk of thermal damage or automatic shutdown.'
+        - uuid: c23df0e1b2b84f408000d8df96389e15
+          name: 'MTS Temperature Alarm'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.42.0
+          key: mtsAlarmTemperature
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsAlarmTemperature.0 - 1= yes (temperature alarm threshold exceeded), 0= no. Check mtsTemperature (.12.2.16.0) for the actual measured value.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+        - uuid: 318e8825aa2146efa679720d65fb33ae
+          name: 'MTS Aux Power 1 Fail'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.20.0
+          key: mtsAuxPower1fail
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsAuxPower1fail.0 - 1= fail (auxiliary power supply 1 has failed), 0= not fail.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: cb87951a97494c78b35906dd20598a88
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsAuxPower1fail)=1'
+              name: '{HOST.NAME} - Auxiliary Power Supply 1 Failure'
+              priority: HIGH
+              description: 'Auxiliary power supply 1 of the MTS has failed. This powers the internal control circuitry. If both auxiliary supplies fail, the MTS may lose the ability to perform transfers.'
+        - uuid: 00b02e243b024d4caeea7f9151a41844
+          name: 'MTS Aux Power 2 Fail'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.19.0
+          key: mtsAuxPower2fail
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsAuxPower2fail.0 - 1= fail (auxiliary power supply 2 has failed), 0= not fail.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: a278918e36624dae84f5ad6a268a2bb2
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsAuxPower2fail)=1'
+              name: '{HOST.NAME} - Auxiliary Power Supply 2 Failure'
+              priority: HIGH
+              description: 'Auxiliary power supply 2 of the MTS has failed. This powers the internal control circuitry. If both auxiliary supplies fail, the MTS may lose the ability to perform transfers.'
+        - uuid: e7647d57247647139eecf17dd4e5d680
+          name: 'MTS General Failure'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.44.0
+          key: mtsGeneralFailure
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsGeneralFailure.0 - 1= yes (general failure condition; the device has detected an internal fault), 0= no. Check individual alarm items for the root cause.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 980c8787ea824e3d803950cba39835f1
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsGeneralFailure)=1'
+              name: '{HOST.NAME} - General Failure Detected'
+              priority: DISASTER
+              description: 'The device has asserted a general failure condition. Check each individual alarm item (SCR loss, MCCB trip, aux power, etc.) to identify the root cause. Immediate attention required.'
+        - uuid: 2b2a9af29f594a3ca8853141200be594
+          name: 'MTS Input Sockets'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.6.0
+          key: mtsIdentInputSockets
+          delay: 1h
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsIdentInputSockets.0 - The number of mts input sockets.'
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 5e6476600c924a36a163fc7b98aa9017
+          name: 'MTS IO Configuration'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.4.0
+          key: mtsIdentIOConfiguration
+          delay: 1h
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsIdentIOConfiguration.0 - The mts input/output configuration (1 for Mono/mono, 4 for Tri/tri).'
+          valuemap:
+            name: 'Riello MTS IO Configuration'
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 4b6e8e79c4f74e3ea99b2de0e2604f9b
+          name: 'MTS Manufacturer'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.1.0
+          key: mtsIdentManufacturer
+          delay: 1h
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          description: 'RIELLOMTS-MIB::mtsIdentManufacturer.0 - The name of the mts manufacturer.'
+          inventory_link: VENDOR
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 9a243f50d9e44e488a802cc02f9c427f
+          name: 'MTS Model'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.2.0
+          key: mtsIdentModel
+          delay: 1h
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          description: 'RIELLOMTS-MIB::mtsIdentModel.0 - The mts Model designation.'
+          inventory_link: MODEL
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: fc71a7ad234c49a6b8a021f09c926fbf
+          name: 'MTS Nominal Current'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.8.0
+          key: mtsIdentNominalCurrent
+          delay: 1h
+          history: 30d
+          trends: '0'
+          units: A
+          description: 'RIELLOMTS-MIB::mtsIdentNominalCurrent.0 - The mts nominal current (A).'
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 785eeb55e37342639c808f62d5b82e32
+          name: 'MTS Nominal Frequency'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.10.0
+          key: mtsIdentNominalFrequency
+          delay: 1h
+          history: 30d
+          trends: '0'
+          value_type: FLOAT
+          units: Hz
+          description: 'RIELLOMTS-MIB::mtsIdentNominalFrequency.0 - The mts nominal frequency (0.1 Hz). Multiplied by 0.1 in preprocessing.'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 1a8323289e6b411ca0bbdcff28b3c493
+          name: 'MTS Nominal Voltage'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.9.0
+          key: mtsIdentNominalVoltage
+          delay: 1h
+          history: 30d
+          trends: '0'
+          units: V
+          description: 'RIELLOMTS-MIB::mtsIdentNominalVoltage.0 - The mts nominal voltage (V).'
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 5675a7ff853f4b0f80815f711a28b88c
+          name: 'MTS Output Sockets'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.7.0
+          key: mtsIdentOutputSockets
+          delay: 1h
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsIdentOutputSockets.0 - The number of mts output sockets.'
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 03d0068a0dc340919bac3c5e96735af7
+          name: 'MTS Software Version'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.3.0
+          key: mtsIdentSoftwareVersion
+          delay: 1h
+          history: 30d
+          trends: '0'
+          value_type: CHAR
+          description: 'RIELLOMTS-MIB::mtsIdentSoftwareVersion.0 - The mts Software version.'
+          inventory_link: SOFTWARE
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 3c22f4e8affb446f83e92c07ecc6af88
+          name: 'MTS Type'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.1.5.0
+          key: mtsIdentType
+          delay: 1h
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsIdentType.0 - The mts type (5 for ATS, 6 for STS).'
+          valuemap:
+            name: 'Riello MTS Device Type'
+          tags:
+            - tag: Application
+              value: Inventory
+        - uuid: 4bd0c470ff1841fe8e145dca376b23a7
+          name: 'MTS Output Load L1'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.10.0
+          key: mtsLoadL1
+          units: '%'
+          description: 'RIELLOMTS-MIB::mtsLoadL1.0 - The output load of line 1 (%).'
+          tags:
+            - tag: Application
+              value: Power
+          triggers:
+            - uuid: 6bb7bf330bf9406a967cc4787a1b6bd8
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsLoadL1)>80'
+              name: '{HOST.NAME} - Output Load High (>{ITEM.LASTVALUE}%)'
+              opdata: 'Load: {ITEM.LASTVALUE} %'
+              priority: WARNING
+              description: 'Output load on L1 exceeds 80% of nominal. At sustained high load, the risk of overload alarm or thermal trip increases. Consider reducing the load or redistributing it across circuits.'
+        - uuid: fd9a56d3c62f4d5b9df6a45823b472a2
+          name: 'MTS Locked'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.29.0
+          key: mtsLocked
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsLocked.0 - 1= locked (the device is locked on current source and cannot transfer), 0= not locked.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 316676dd84844ea480e620c12789f5f6
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsLocked)=1'
+              name: '{HOST.NAME} - MTS Locked (Transfer Disabled)'
+              priority: HIGH
+              description: 'The device is locked on the current source and automatic transfer is disabled. This means there is NO redundancy protection. The lock condition may be a configuration setting or the result of a fault. Check the device front panel.'
+        - uuid: b6fc26c96b29409e8437e2ec0523e9b7
+          name: 'MTS Manual Bypass S1 Active'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.50.0
+          key: mtsManBypassS1
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsManBypassS1.0 - 1= yes (manual bypass on S1 is active, device is bypassed), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+        - uuid: 08077f10ad1f490eba93adcd85bbe6ac
+          name: 'MTS Manual Bypass S2 Active'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.49.0
+          key: mtsManBypassS2
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsManBypassS2.0 - 1= yes (manual bypass on S2 is active, device is bypassed), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+        - uuid: dc1bb2c608a146978bdd1a2ec6f5ea21
+          name: 'MTS Manual Transfer to S1 Active'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.52.0
+          key: mtsManTransferS1
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsManTransferS1.0 - 1= yes (manual transfer to S1 is in progress), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+        - uuid: 2219e8f81e3644eb84f5e41e254da22f
+          name: 'MTS Manual Transfer to S2 Active'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.51.0
+          key: mtsManTransferS2
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsManTransferS2.0 - 1= yes (manual transfer to S2 is in progress), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+        - uuid: 5da15d873f0544be95eb94719ef3c1ba
+          name: 'MTS Non-Synch Transfer Inhibit'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.24.0
+          key: mtsNonSynchInibit
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsNonSynchInibit.0 - 1= yes (non-synchronous transfer is inhibited by configuration), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 60c4be8522eb49bd97d88a0e8d99cb21
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsNonSynchInibit)=1'
+              name: '{HOST.NAME} - Non-Synchronous Transfer Inhibited'
+              priority: WARNING
+              description: 'Non-synchronous transfer is inhibited by configuration. If the sources are out of sync when a transfer is required, the MTS will wait rather than perform a non-synchronous switch. This may increase the load interruption time during a source fault.'
+        - uuid: 7d4c3fa367b64c4192a7632333129272
+          name: 'MTS On Source S1 (Powering Load)'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.28.0
+          key: mtsOnSourceS1
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsOnSourceS1.0 - 1= yes (S1 is actively powering the load), 0= no. Used for Zabbix Maps. OID .12.2.28.0'
+          valuemap:
+            name: 'Riello MTA InputStatus Used'
+          tags:
+            - tag: Application
+              value: MapIndicators
+          triggers:
+            - uuid: b01df79c27234552832d57cd74623d9e
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsOnSourceS1)=0'
+              name: '{HOST.NAME} - Source S1 NOT Powering Load (Standby)'
+              priority: INFO
+              description: 'Source S1 is not the active source; the load is being powered by S2. Used as a map indicator. This is normal when S2 is preferred or S1 is unavailable.'
+        - uuid: d7feb953c43a47339c48d50b1425db80
+          name: 'MTS On Source S2 (Powering Load)'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.27.0
+          key: mtsOnSourceS2
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsOnSourceS2.0 - 1= yes (S2 is actively powering the load), 0= no. Used for Zabbix Maps. OID .12.2.27.0'
+          valuemap:
+            name: 'Riello MTA InputStatus Used'
+          tags:
+            - tag: Application
+              value: MapIndicators
+          triggers:
+            - uuid: 955f49b1852e47a1925b5abf0feddbd0
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsOnSourceS2)=0'
+              name: '{HOST.NAME} - Source S2 NOT Powering Load (Standby)'
+              priority: INFO
+              description: 'Source S2 is not the active source; the load is being powered by S1. Used as a map indicator. This is normal when S1 is preferred.'
+        - uuid: 1a94464816d94bb39f9f8d5eff2d2fbe
+          name: 'MTS Output Current L1'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.13.0
+          key: mtsOutputCurrentL1
+          value_type: FLOAT
+          units: A
+          description: 'RIELLOMTS-MIB::mtsOutputCurrentL1.0 - The output load current of line 1 (0.1 A). Multiplied by 0.1 in preprocessing.'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: Power
+        - uuid: 4185329ad8aa4ef9aa6423a80b50ab42
+          name: 'MTS Output SCR Alternance Loss'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.48.0
+          key: mtsOutputSCRalternanceloss
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsOutputSCRalternanceloss.0 - 1= yes (SCR alternance loss on output stage; the output switching SCRs have failed), 0= no. Critical hardware fault: no clean transfer possible.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: eaa40978f680402bbf8af6daf95df673
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsOutputSCRalternanceloss)=1'
+              name: '{HOST.NAME} - Output SCR Alternance Loss (Critical Hardware Fault)'
+              priority: DISASTER
+              description: 'The output-stage SCR switching circuit has failed. The device cannot perform clean transfers. The load may be at risk. Requires immediate hardware intervention.'
+        - uuid: e9e338c1a0a54d0fb807538382f9e92d
+          name: 'MTS Output Switch Off'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.30.0
+          key: mtsOutputSwitchOff
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsOutputSwitchOff.0 - 1= yes (output switch is open, no power to load), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: d550c6ec17834977964f28a59bd84943
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsOutputSwitchOff)=1'
+              name: '{HOST.NAME} - Output Switch is OFF (No Power to Load)'
+              priority: HIGH
+              description: 'The output switch is open. The connected load is receiving no power regardless of source availability. Check whether this is intentional or the result of a fault or manual operation.'
+        - uuid: fad31ae754764244afe1c27e8bbddee5
+          name: 'MTS Phase Difference S1-S2'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.9.0
+          key: mtsPhaseDifference
+          units: °
+          description: 'RIELLOMTS-MIB::mtsPhaseDifference.0 - Phase difference between sources (degrees). High values indicate the two sources are out of phase; a forced transfer may cause a load disturbance.'
+          tags:
+            - tag: Application
+              value: Power
+          triggers:
+            - uuid: 0ee37c229d864c708e9f7c1f42b8dc1e
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsPhaseDifference)>30'
+              name: '{HOST.NAME} - Phase Difference High Between Sources'
+              opdata: 'Phase diff: {ITEM.LASTVALUE} °'
+              priority: WARNING
+              description: 'Phase difference between S1 and S2 exceeds 30°. A forced transfer while sources are significantly out of phase will cause a momentary disturbance or brief interruption to the load. Adjust the threshold to match your site tolerance. This trigger fires on the last measured value; set manual_close so it can be acknowledged after transient events.'
+              manual_close: 'YES'
+        - uuid: c774cd48cfcd4f7b859c7fb61953ace8
+          name: 'MTS Preferred Source'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.22.0
+          key: mtsPreferredSource
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsPreferredSource.0 - The preferred source: 1= S2, 0= S1.'
+          valuemap:
+            name: 'Riello MTS Source Select'
+          tags:
+            - tag: Application
+              value: Status
+        - uuid: 1a2ac2a630414bb3a41eed53f5573bbd
+          name: 'MTS S1 Phase Balance Bad'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.37.0
+          key: mtsS1Balancebad
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1Balancebad.0 - 1= yes (phase balance on S1 is outside acceptable limits; applies to 3-phase configurations), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 1132d3d032a24ff6a4e5a0b67b016405
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1Balancebad)=1'
+              name: '{HOST.NAME} - Source S1 Phase Balance Fault'
+              priority: WARNING
+              description: 'Phase balance on S1 is outside acceptable limits. Primarily relevant in 3-phase configurations where one phase voltage differs significantly from the others. For monophase devices this alarm should not fire in normal operation.'
+        - uuid: d3b58b1b789b442aa6fe4f113c4c159b
+          name: 'MTS S1 Blackout'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.38.0
+          key: mtsS1Blackout
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1Blackout.0 - 1= yes (complete power loss / blackout on Source 1), 0= no. MTS will transfer to S2 if available.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: ea4408e5a4a94a1a92aaf6c0871007c3
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1Blackout)=1'
+              name: '{HOST.NAME} - Source S1 BLACKOUT'
+              priority: HIGH
+              description: 'Complete power loss detected on Source 1. The MTS is (or will transfer to) running on S2 only — no redundancy. Investigate the S1 feed immediately.'
+        - uuid: 91323b00c3f140aa9100a1ec46fcdd60
+          name: 'MTS S1 Frequency'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.1.0
+          key: mtsS1Frequency
+          value_type: FLOAT
+          units: Hz
+          description: 'RIELLOMTS-MIB::mtsS1Frequency.0 - The frequency of source 1 (0.1 Hz). Multiplied by 0.1 in preprocessing.'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: Power
+        - uuid: 3d1944baa61c4cbab4fd2428ae46acd3
+          name: 'MTS S1 Frequency Bad'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.36.0
+          key: mtsS1Frequencybad
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1Frequencybad.0 - 1= bad (frequency on S1 is outside the configured tolerance; source will not be used for synchronous transfer), 0= not bad.'
+          valuemap:
+            name: 'Riello MTS Bad Status'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 37a66033aa0448b582196dd0ba1f00e9
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1Frequencybad)=1'
+              name: '{HOST.NAME} - Source S1 Frequency Bad'
+              priority: AVERAGE
+              description: 'The frequency on S1 is outside the configured tolerance. S1 will not be eligible for synchronous transfer. If S1 is the only source available, a non-synchronous transfer may occur causing a brief load interruption.'
+        - uuid: ef4be878ed7e4443a2d1df5966928f87
+          name: 'MTS S1 Input MCCB Trip'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.46.0
+          key: mtsS1InputMCCBtrip
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1InputMCCBtrip.0 - 1= yes (Molded Case Circuit Breaker on S1 input has tripped due to overcurrent or fault), 0= no. Manual reset of the MCCB is required.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 4015fda1a1464fddb6d334ce977a0d2b
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1InputMCCBtrip)=1'
+              name: '{HOST.NAME} - Source S1 MCCB Trip'
+              priority: HIGH
+              description: 'The Molded Case Circuit Breaker on S1 input has tripped (overcurrent or fault). S1 is unavailable. The MCCB must be manually reset after the fault is cleared.'
+        - uuid: edf482e07fc04b729f4ccfc9b12e467c
+          name: 'MTS S1 Input Switch Off'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.35.0
+          key: mtsS1InputSWOff
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1InputSWOff.0 - 1= yes (input switch on S1 is open / off; S1 is disconnected from the MTS), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 44c22dc4a82d46219dd13e2abf902738
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1InputSWOff)=1'
+              name: '{HOST.NAME} - Source S1 Input Switch OFF'
+              priority: HIGH
+              description: 'The input switch (mechanical contactor or circuit breaker) on S1 is open. S1 is not available as a source. Check whether this is intentional (maintenance) or a fault condition.'
+        - uuid: b8389f5ba24a4cac9443d9faa8e2ac2b
+          name: 'MTS S1 Phase Sequence Not OK'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.39.0
+          key: mtsS1PhaseseqNotok
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1PhaseseqNotok.0 - 1= yes (phase sequence on S1 is incorrect / reversed), 0= no. Do not transfer to S1 if this is set.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: c0f3ff84416141a6ab0fa3ef15be9103
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1PhaseseqNotok)=1'
+              name: '{HOST.NAME} - Source S1 Phase Sequence Fault'
+              priority: HIGH
+              description: 'Phase sequence on S1 is incorrect (possibly reversed). The MTS will refuse to use S1. Do not attempt transfer to S1 until the phase sequence is verified and corrected.'
+        - uuid: 85ce2a8291044c77b0fde2e8965feec4
+          name: 'MTS S1 SCR Alternate Loss'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.34.0
+          key: mtsS1SCRAlternateLoss
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1SCRAlternateLoss.0 - 1= yes (SCR alternance loss on S1; one or more SCRs in the S1 switching circuit have failed), 0= no. Requires immediate hardware inspection.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 1e803ae029344d549e2d1d1ac7e84652
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1SCRAlternateLoss)=1'
+              name: '{HOST.NAME} - Source S1 SCR Alternate Loss (Hardware Fault)'
+              priority: HIGH
+              description: 'One or more SCRs in the S1 switching circuit have failed. The device can no longer perform clean switching from/to S1. Requires hardware inspection and likely component replacement.'
+        - uuid: 0c610e927f6d4b62b65503c1e69b2d97
+          name: 'MTS S1 Voltage L1'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.2.0
+          key: mtsS1VoltageL1
+          units: V
+          description: 'RIELLOMTS-MIB::mtsS1VoltageL1.0 - The voltage of source 1, line 1 (V).'
+          tags:
+            - tag: Application
+              value: Power
+        - uuid: a350da138d7e43b8951d6d9167532db0
+          name: 'MTS S1 Voltage Out of Tolerance'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.40.0
+          key: mtsS1VoltOutoftolerance
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS1VoltOutoftolerance.0 - 1= yes (voltage on S1 is outside the configured acceptable tolerance window), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 69c74d47924e418794c91d4037b556f6
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1VoltOutoftolerance)=1'
+              name: '{HOST.NAME} - Source S1 Voltage Out of Tolerance'
+              opdata: 'S1 Voltage: {ITEM.LASTVALUE2}'
+              priority: AVERAGE
+              description: 'The voltage on S1 is outside the configured acceptable tolerance window. The MTS may refuse to transfer to or from S1 depending on configuration. Check S1 voltage (mtsS1VoltageL1).'
+        - uuid: b8cf1d8b60ef4323bae9f752e1c2c2a6
+          name: 'MTS S2 Phase Balance Bad'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.56.0
+          key: mtsS2Balancebad
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2Balancebad.0 - 1= yes (phase balance on S2 is outside acceptable limits; applies to 3-phase configurations), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 3d54763a54474a908e75c13f3b13d970
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2Balancebad)=1'
+              name: '{HOST.NAME} - Source S2 Phase Balance Fault'
+              priority: WARNING
+              description: 'Phase balance on S2 is outside acceptable limits. Primarily relevant in 3-phase configurations where one phase voltage differs significantly from the others. For monophase devices this alarm should not fire in normal operation.'
+        - uuid: 19e66eedfff0482b8f68ea496d477c3d
+          name: 'MTS S2 Blackout'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.31.0
+          key: mtsS2Blackout
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2Blackout.0 - 1= blackout (complete power loss / blackout on Source 2), 0= no blackout. MTS will transfer to S1 if available.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: bcf80b4d0f7545148524cef67c5a3310
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2Blackout)=1'
+              name: '{HOST.NAME} - Source S2 BLACKOUT'
+              priority: HIGH
+              description: 'Complete power loss detected on Source 2. The MTS is running on S1 only — no redundancy. Investigate the S2 feed immediately.'
+        - uuid: 0633be9e80724dd7a7d483a5536180b6
+          name: 'MTS S2 Frequency'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.5.0
+          key: mtsS2Frequency
+          value_type: FLOAT
+          units: Hz
+          description: 'RIELLOMTS-MIB::mtsS2Frequency.0 - The frequency of source 2 (0.1 Hz). Multiplied by 0.1 in preprocessing.'
+          preprocessing:
+            - type: MULTIPLIER
+              parameters:
+                - '0.1'
+          tags:
+            - tag: Application
+              value: Power
+        - uuid: 87acb5ff812f4b2291c5be402423184b
+          name: 'MTS S2 Frequency Bad'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.55.0
+          key: mtsS2Frequencybad
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2Frequencybad.0 - 1= yes (frequency on S2 is outside the configured tolerance; source will not be used for synchronous transfer), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 81b23abb6a2849aa911246254829e222
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2Frequencybad)=1'
+              name: '{HOST.NAME} - Source S2 Frequency Bad'
+              priority: AVERAGE
+              description: 'The frequency on S2 is outside the configured tolerance. S2 will not be eligible for synchronous transfer. If S2 is the only source available, a non-synchronous transfer may occur causing a brief load interruption.'
+        - uuid: deeed027064f49748c7c6316a8da417e
+          name: 'MTS S2 Input MCCB Trip'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.45.0
+          key: mtsS2InputMCCBtrip
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2InputMCCBtrip.0 - 1= yes (Molded Case Circuit Breaker on S2 input has tripped due to overcurrent or fault), 0= no. Manual reset of the MCCB is required.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 79c5ccc2a9794a8fbc0d5c4e8336f040
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2InputMCCBtrip)=1'
+              name: '{HOST.NAME} - Source S2 MCCB Trip'
+              priority: HIGH
+              description: 'The Molded Case Circuit Breaker on S2 input has tripped (overcurrent or fault). S2 is unavailable. The MCCB must be manually reset after the fault is cleared.'
+        - uuid: 95c2aa8235784b81ac6088b4e677f5f2
+          name: 'MTS S2 Input Switch Off'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.54.0
+          key: mtsS2InputSWoff
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2InputSWoff.0 - 1= yes (input switch on S2 is open / off; S2 is disconnected from the MTS), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 5d1caa7789da4576b3e7196f79d3c992
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2InputSWoff)=1'
+              name: '{HOST.NAME} - Source S2 Input Switch OFF'
+              priority: HIGH
+              description: 'The input switch (mechanical contactor or circuit breaker) on S2 is open. S2 is not available as a source. Check whether this is intentional (maintenance) or a fault condition.'
+        - uuid: 5577abfafa0a4649be2f3a962b53651e
+          name: 'MTS S2 Phase Sequence Not OK'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.32.0
+          key: mtsS2PhaseseqNotok
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2PhaseseqNotok.0 - 1= yes (phase sequence on S2 is incorrect / reversed), 0= no. Do not transfer to S2 if this is set.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 51e6792e3b24410985432c798e20441d
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2PhaseseqNotok)=1'
+              name: '{HOST.NAME} - Source S2 Phase Sequence Fault'
+              priority: HIGH
+              description: 'Phase sequence on S2 is incorrect (possibly reversed). The MTS will refuse to use S2. Do not attempt transfer to S2 until the phase sequence is verified and corrected.'
+        - uuid: 39b919c6be21488b81296e960cc68f15
+          name: 'MTS S2 SCR Alternance Loss'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.53.0
+          key: mtsS2SCRalternanceloss
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2SCRalternanceloss.0 - 1= yes (SCR alternance loss on S2; one or more SCRs in the S2 switching circuit have failed), 0= no. Requires immediate hardware inspection.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: f030c2a93fdb455496af64a65a1acdf7
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2SCRalternanceloss)=1'
+              name: '{HOST.NAME} - Source S2 SCR Alternance Loss (Hardware Fault)'
+              priority: HIGH
+              description: 'One or more SCRs in the S2 switching circuit have failed. The device can no longer perform clean switching from/to S2. Requires hardware inspection and likely component replacement.'
+        - uuid: 75d3145523dd421ea877f9938e762ace
+          name: 'MTS S2 Voltage L1'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.6.0
+          key: mtsS2VoltageL1
+          units: V
+          description: 'RIELLOMTS-MIB::mtsS2VoltageL1.0 - The voltage of source 2, line 1 (V).'
+          tags:
+            - tag: Application
+              value: Power
+        - uuid: 4c515afe0d60497eb45c79e559858adb
+          name: 'MTS S2 Voltage Out of Tolerance'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.33.0
+          key: mtsS2VoltOutoftolerance
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsS2VoltOutoftolerance.0 - 1= yes (voltage on S2 is outside the configured acceptable tolerance window), 0= no.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: deddbaa0a8304955a2787d06769b64e7
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS2VoltOutoftolerance)=1'
+              name: '{HOST.NAME} - Source S2 Voltage Out of Tolerance'
+              opdata: 'S2 Voltage: {ITEM.LASTVALUE2}'
+              priority: AVERAGE
+              description: 'The voltage on S2 is outside the configured acceptable tolerance window. The MTS may refuse to transfer to or from S2 depending on configuration. Check S2 voltage (mtsS2VoltageL1).'
+        - uuid: 53d49e57ab5b4045a215b9dcd39708ce
+          name: 'MTS Source S1 Bad'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.26.0
+          key: mtsSourceS1bad
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsSourceS1bad.0 - 1= bad (source 1 is considered bad by the MTS and will not be used), 0= not bad. Aggregate quality indicator for S1.'
+          valuemap:
+            name: 'Riello MTS Bad Status'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 15fd1ba9b7d2493587e9b2e9054f1568
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsSourceS1bad)=1'
+              name: '{HOST.NAME} - Source S1 is BAD (MTS will not use S1)'
+              priority: HIGH
+              description: 'The MTS considers Source 1 as BAD and has excluded it from use. This is an aggregate quality flag; individual cause flags (blackout, phase sequence, voltage tolerance, frequency, SCR) should be checked for the specific reason.'
+        - uuid: 455b93f7978b4280bd9a3f3801593e7d
+          name: 'MTS Source S2 Bad'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.25.0
+          key: mtsSourceS2bad
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsSourceS2bad.0 - 1= bad (source 2 is considered bad by the MTS and will not be used), 0= not bad. Aggregate quality indicator for S2.'
+          valuemap:
+            name: 'Riello MTS Bad Status'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 31526f6c188f410397672a9da05d3b9e
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsSourceS2bad)=1'
+              name: '{HOST.NAME} - Source S2 is BAD (MTS will not use S2)'
+              priority: HIGH
+              description: 'The MTS considers Source 2 as BAD and has excluded it from use. This is an aggregate quality flag; individual cause flags (blackout, phase sequence, voltage tolerance, frequency, SCR) should be checked for the specific reason.'
+        - uuid: 7ec1210068574436a412fdf0f7877109
+          name: 'MTS Synchro Bad'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.21.0
+          key: mtsSynchrobad
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsSynchrobad.0 - 1= bad (sources are not synchronised), 0= not bad. When bad, a non-synchronous transfer may be required.'
+          valuemap:
+            name: 'Riello MTS Bad Status'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: d55bd318711a4981924e05b77fb692f3
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsSynchrobad)=1'
+              name: '{HOST.NAME} - Sources Not Synchronised (Synchro Bad)'
+              priority: AVERAGE
+              description: 'The two sources are not synchronised (phase difference too large or frequency mismatch). Any transfer while this condition persists will be non-synchronous, causing a brief load interruption. Check mtsPhaseDifference and source frequencies.'
+        - uuid: 1e38b7a570ad4d6ca8949b66cc11ac78
+          name: 'MTS Device Temperature'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.16.0
+          key: mtsTemperature
+          delay: 3m
+          units: °C
+          description: 'RIELLOMTS-MIB::mtsTemperature.0 - The temperature of the device (°C). This is the internal MTS temperature sensor, not an external environmental sensor.'
+          tags:
+            - tag: Application
+              value: Environmental
+        - uuid: 4b90a88210e341a5b065d202efa03ef0
+          name: 'MTS Test In Progress'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.18.0
+          key: mtsTestInProgress
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsTestInProgress.0 - 1= test in progress, 0= test not in progress.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: 7b11c46fcfd449f896b2c39d3af0f97b
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsTestInProgress)=1'
+              name: '{HOST.NAME} - Transfer Test In Progress'
+              priority: INFO
+              description: 'A transfer test is currently running on the device. This is an expected operational event. The trigger will auto-clear when the test completes.'
+        - uuid: 78fec273af2a4c3d8de8663499a77771
+          name: 'MTS Transfer Inhibit'
+          type: SNMP_AGENT
+          snmp_oid: .1.3.6.1.4.1.5491.12.2.23.0
+          key: mtsTransferhinibit
+          delay: 30s
+          history: 30d
+          trends: '0'
+          description: 'RIELLOMTS-MIB::mtsTransferhinibit.0 - 1= transfer is inhibited (the device will not perform automatic transfer), 0= not inhibited.'
+          valuemap:
+            name: 'Riello MTS Yes/No'
+          tags:
+            - tag: Application
+              value: Status
+          triggers:
+            - uuid: e5d23f86fcab4129a4c37ae9d43808b9
+              expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsTransferhinibit)=1'
+              name: '{HOST.NAME} - Automatic Transfer Inhibited'
+              priority: AVERAGE
+              description: 'Automatic transfer is inhibited. The device will not perform source switching even if the active source becomes bad. This removes all redundancy protection. Check device configuration and any inhibit signals.'
+      valuemaps:
+        - uuid: b4da167ec51f4259b10598bb6d3bce2d
+          name: 'Riello MTA InputStatus Used'
+          mappings:
+            - value: '0'
+              newvalue: 'Not Powering Load'
+            - value: '1'
+              newvalue: 'Powering Load'
+        - uuid: 37999d0eff4c4e11b8a337fe6fb96467
+          name: 'Riello MTS Bad Status'
+          mappings:
+            - value: '0'
+              newvalue: 'Not Bad'
+            - value: '1'
+              newvalue: Bad
+        - uuid: 26e9b490012a4730ad150cdf85401734
+          name: 'Riello MTS Device Type'
+          mappings:
+            - value: '5'
+              newvalue: 'ATS (Automatic Transfer Switch)'
+            - value: '6'
+              newvalue: 'STS (Static Transfer Switch)'
+        - uuid: a07402bb5fbc403a9af7be9d9f0a2c70
+          name: 'Riello MTS IO Configuration'
+          mappings:
+            - value: '1'
+              newvalue: 'Mono/Mono (1-phase in, 1-phase out)'
+            - value: '4'
+              newvalue: 'Tri/Tri (3-phase in, 3-phase out)'
+        - uuid: a7976edc6b2a4e71a1424acd777af985
+          name: 'Riello MTS Source Select'
+          mappings:
+            - value: '0'
+              newvalue: 'Source 1 (S1)'
+            - value: '1'
+              newvalue: 'Source 2 (S2)'
+        - uuid: 6694b3ea75ab4cbe9ef281b63eeb1b34
+          name: 'Riello MTS Yes/No'
+          mappings:
+            - value: '0'
+              newvalue: 'No'
+            - value: '1'
+              newvalue: 'Yes'
+  triggers:
+    - uuid: 3274b59ade424ce9a230396cb2df0a98
+      expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsS1Blackout)=1 and last(/SNMP Riello Netman208c MTA 16A/mtsS2Blackout)=1'
+      name: '{HOST.NAME} - BOTH SOURCES IN BLACKOUT - Load Unprotected'
+      priority: DISASTER
+      description: 'Both S1 and S2 are simultaneously in complete blackout. The connected load has no power source available and is unprotected. Requires immediate response.'
+    - uuid: feabc48577a8418ab2123fd1be553a0e
+      expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsManBypassS1)=1 or last(/SNMP Riello Netman208c MTA 16A/mtsManBypassS2)=1'
+      name: '{HOST.NAME} - Manual Bypass Active'
+      priority: WARNING
+      description: 'A manual bypass is active on S1 or S2. The device is in bypass mode: the load is directly connected to a source without ATS protection or switching capability. Typically used during maintenance. Ensure this is intentional.'
+    - uuid: b086a2ae78cc4208adf605788c805009
+      expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsManTransferS1)=1 or last(/SNMP Riello Netman208c MTA 16A/mtsManTransferS2)=1'
+      name: '{HOST.NAME} - Manual Transfer In Progress'
+      priority: INFO
+      description: 'A manual transfer command is currently being executed. This is an operational event. The trigger will auto-clear when the transfer completes.'
+    - uuid: 0d8fe059ca1c431cb597c2663d76261c
+      expression: 'last(/SNMP Riello Netman208c MTA 16A/mtsAlarmTemperature)=1 and last(/SNMP Riello Netman208c MTA 16A/mtsTemperature)<65535'
+      name: '{HOST.NAME} - Temperature Alarm'
+      opdata: 'Temp: {ITEM.LASTVALUE2} °C'
+      priority: AVERAGE
+      description: 'The device internal temperature has exceeded the alarm threshold. Check ambient temperature, ventilation, and load level. Prolonged overtemperature may cause automatic shutdown or component damage.'
+      manual_close: 'YES'
+    - uuid: 3dfeed91a35f4d518e65c9498cea69e3
+      expression: |
+        (last(/SNMP Riello Netman208c MTA 16A/mtsPreferredSource)=0 and last(/SNMP Riello Netman208c MTA 16A/mtsOnSourceS2)=1)
+        or
+        (last(/SNMP Riello Netman208c MTA 16A/mtsPreferredSource)=1 and last(/SNMP Riello Netman208c MTA 16A/mtsOnSourceS1)=1)
+      name: '{HOST.NAME} - Using NOT preferred source'
+      priority: WARNING
+      description: |
+        Source S1 is preferred but S2 is powering load, or
+        Source S2 is preferred but S1 is powering load
+  graphs:
+    - uuid: cacfea04951940a4bebeb742b6379769
+      name: 'Device Temperature'
+      ymin_type_1: FIXED
+      graph_items:
+        - sortorder: '1'
+          drawtype: GRADIENT_LINE
+          color: F63100
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsTemperature
+    - uuid: 922fe128f296431ab192028a3dcef41a
+      name: 'Output Load and Current'
+      graph_items:
+        - sortorder: '1'
+          drawtype: GRADIENT_LINE
+          color: F63100
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsLoadL1
+        - sortorder: '2'
+          drawtype: BOLD_LINE
+          color: '274482'
+          yaxisside: RIGHT
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsOutputCurrentL1
+    - uuid: b85e25e280324af6beec3fed44353eb8
+      name: 'Phase Difference S1-S2'
+      ymin_type_1: FIXED
+      graph_items:
+        - sortorder: '1'
+          drawtype: GRADIENT_LINE
+          color: E65660
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsPhaseDifference
+    - uuid: 7a9164fafd314cb98028ccea4ab21678
+      name: 'Source Frequencies (S1 / S2)'
+      yaxismin: '45'
+      yaxismax: '55'
+      ymin_type_1: FIXED
+      ymax_type_1: FIXED
+      graph_items:
+        - sortorder: '1'
+          drawtype: BOLD_LINE
+          color: 1A7C11
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsS1Frequency
+        - sortorder: '2'
+          drawtype: BOLD_LINE
+          color: F63100
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsS2Frequency
+    - uuid: f889303d94574e3dbf0f6125c6020c4e
+      name: 'Source Voltages (S1 / S2)'
+      yaxismin: '180'
+      yaxismax: '260'
+      ymin_type_1: FIXED
+      ymax_type_1: FIXED
+      graph_items:
+        - sortorder: '1'
+          drawtype: BOLD_LINE
+          color: 1A7C11
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsS1VoltageL1
+        - sortorder: '2'
+          drawtype: BOLD_LINE
+          color: F63100
+          item:
+            host: 'SNMP Riello Netman208c MTA 16A'
+            key: mtsS2VoltageL1
