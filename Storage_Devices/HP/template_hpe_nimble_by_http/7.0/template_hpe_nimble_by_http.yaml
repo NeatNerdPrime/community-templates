@@ -1,0 +1,1290 @@
+zabbix_export:
+  version: '7.0'
+  template_groups:
+    - uuid: 8e89fd6d44134635b89f423c8bf1bbba
+      name: Templates/SAN
+  templates:
+    - uuid: 7737e58ea09e491b93ba737f3cfa94a6
+      template: 'HPE Nimble Storage by HTTP'
+      name: 'HPE Nimble Storage by HTTP'
+      description: |
+        HPE Nimble Storage (Nimble OS 5.x / Alletra 6000) monitoring via REST API.
+        Uses a single SCRIPT item to authenticate, query all endpoints, and return JSON.
+        All metrics are extracted as DEPENDENT items.
+        
+        Endpoints: arrays, controllers, pools, volumes, disks, network_interfaces, shelves, alarms.
+        
+        Setup:
+        1. Link template to host.
+        2. Set {$HPE.NIMBLE.API.HOST}, {$HPE.NIMBLE.API.USERNAME}, {$HPE.NIMBLE.API.PASSWORD}.
+        3. Default port: 5392, scheme: https.
+      groups:
+        - name: Templates/SAN
+      items:
+        - uuid: 95b8ad7687fa47c4bbfc4903084f864c
+          name: 'Array: Model'
+          type: DEPENDENT
+          key: nimble.array.model
+          delay: '0'
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          inventory_link: MODEL
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].model'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: system
+        - uuid: 3efb80d5a57647d882a8015e69b593fe
+          name: 'Array: Name'
+          type: DEPENDENT
+          key: nimble.array.name
+          delay: '0'
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          inventory_link: NAME
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].name'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: system
+        - uuid: 7cb7ea6bea5048c68e6c271518c462c6
+          name: 'Array: Serial'
+          type: DEPENDENT
+          key: nimble.array.serial
+          delay: '0'
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          inventory_link: SERIALNO_A
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].serial'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: system
+        - uuid: 5a788df5c5ce4069a737ce6be3f677a9
+          name: 'Array: Snap Usage'
+          type: DEPENDENT
+          key: nimble.array.snap_usage
+          delay: '0'
+          history: 7d
+          value_type: FLOAT
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].snap_usage_bytes'
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: capacity
+        - uuid: 48460975a9964c7991c0ef19cb980147
+          name: 'Array: Space Utilization'
+          type: CALCULATED
+          key: nimble.array.space_pct
+          delay: 5m
+          history: 7d
+          value_type: FLOAT
+          units: '%'
+          params: 'last(/HPE Nimble Storage by HTTP/nimble.array.usage) / last(/HPE Nimble Storage by HTTP/nimble.array.usable_capacity) * 100'
+          description: 'Array space utilization in percent (used / usable_capacity * 100)'
+          tags:
+            - tag: component
+              value: capacity
+          triggers:
+            - uuid: 1f868b04fc70447b90e6d240917c68f5
+              expression: 'last(/HPE Nimble Storage by HTTP/nimble.array.space_pct)>{$HPE.NIMBLE.SPACE.WARN}'
+              name: 'Nimble: Array space utilization is high (>{$HPE.NIMBLE.SPACE.WARN}%)'
+              opdata: 'Used: {ITEM.LASTVALUE1}%'
+              priority: AVERAGE
+              tags:
+                - tag: scope
+                  value: capacity
+        - uuid: 1b4120de845848fc8c8dbf22e438fd37
+          name: 'Array: Status'
+          type: DEPENDENT
+          key: nimble.array.status
+          delay: '0'
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].status'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: c00cdb2a50fe480b80d6f1ff3fc49970
+              expression: 'last(/HPE Nimble Storage by HTTP/nimble.array.status)<>"reachable"'
+              name: 'Nimble: Array is not reachable'
+              opdata: 'Current status: {ITEM.LASTVALUE1}'
+              priority: HIGH
+              tags:
+                - tag: scope
+                  value: availability
+        - uuid: d3eedb5f06fb4a0297555cdc5217ab5b
+          name: 'Array: Usable Capacity'
+          type: DEPENDENT
+          key: nimble.array.usable_capacity
+          delay: '0'
+          history: 7d
+          value_type: FLOAT
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].usable_capacity_bytes'
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: capacity
+        - uuid: 91c98cc31ca94a0c919c8db865faf0b1
+          name: 'Array: Used Space'
+          type: DEPENDENT
+          key: nimble.array.usage
+          delay: '0'
+          history: 7d
+          value_type: FLOAT
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].usage'
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: capacity
+        - uuid: 2ea79ba604864fe1be1b9dbe26722559
+          name: 'Array: OS Version'
+          type: DEPENDENT
+          key: nimble.array.version
+          delay: '0'
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          inventory_link: SOFTWARE_APP_A
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].version'
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 12h
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: system
+        - uuid: 59347dfe67174d4cae6b8752090c37d6
+          name: 'Array: Volume Usage'
+          type: DEPENDENT
+          key: nimble.array.vol_usage
+          delay: '0'
+          history: 7d
+          value_type: FLOAT
+          units: B
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - '$.arrays[0].vol_usage_bytes'
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: capacity
+        - uuid: 345e7916bc354d019779685f030ebb69
+          name: 'Nimble: Get data'
+          type: SCRIPT
+          key: nimble.get.data
+          history: '0'
+          value_type: TEXT
+          trends: '0'
+          params: |
+            
+            var Nimble = {
+                params: {},
+                token: null,
+                errors: [],
+            
+                setParams: function (params) {
+                    ['username', 'password', 'base_url'].forEach(function (field) {
+                        if (typeof params !== 'object' || typeof params[field] === 'undefined' || params[field] === '') {
+                            throw 'Required param is not set: ' + field + '.';
+                        }
+                    });
+                    Nimble.params = params;
+                },
+            
+                login: function () {
+                    var request = new HttpRequest();
+                    request.addHeader('Content-Type: application/json');
+                    request.addHeader('Accept: application/json');
+            
+                    var response = request.post(
+                        Nimble.params.base_url + '/v1/tokens',
+                        JSON.stringify({ data: { username: Nimble.params.username, password: Nimble.params.password } })
+                    );
+            
+                    if (request.getStatus() !== 201 && request.getStatus() !== 200) {
+                        throw 'Auth failed (HTTP ' + request.getStatus() + '): ' + response;
+                    }
+            
+                    try {
+                        var result = JSON.parse(response);
+                        if (result.data && result.data.session_token) {
+                            Nimble.token = result.data.session_token;
+                        } else if (result.data && result.data.id) {
+                            Nimble.token = result.data.id;
+                        } else {
+                            throw 'No token in auth response';
+                        }
+                    } catch (e) {
+                        throw 'Auth parse error: ' + e;
+                    }
+                },
+            
+                request: function (path) {
+                    if (!Nimble.token) throw 'No auth token.';
+                    var request = new HttpRequest();
+                    request.addHeader('X-Auth-Token: ' + Nimble.token);
+                    request.addHeader('Accept: application/json');
+            
+                    var response = request.get(Nimble.params.base_url + '/v1/' + path);
+            
+                    if (request.getStatus() !== 200) {
+                        throw 'HTTP ' + request.getStatus() + ' on ' + path;
+                    }
+            
+                    try {
+                        return JSON.parse(response).data || [];
+                    } catch (e) {
+                        throw 'Parse error (' + path + '): ' + e;
+                    }
+                },
+            
+                requestDetail: function (collection) {
+                    var items = Nimble.request(collection);
+                    if (!items || !items.length) return [];
+                    var detailed = [];
+                    for (var i = 0; i < items.length; i++) {
+                        try {
+                            var item = Nimble.request(collection + '/' + items[i].id);
+                            detailed.push(item);
+                        } catch (e) {
+                            items[i]._error = e.toString();
+                            detailed.push(items[i]);
+                        }
+                    }
+                    return detailed;
+                },
+            
+                logout: function () {
+                    if (Nimble.token) {
+                        try {
+                            var request = new HttpRequest();
+                            request.addHeader('X-Auth-Token: ' + Nimble.token);
+                            request.delete(Nimble.params.base_url + '/v1/tokens/' + Nimble.token);
+                        } catch (e) {}
+                    }
+                }
+            };
+            
+            var data = { arrays: [], controllers: [], pools: [], volumes: [], disks: [], network_interfaces: [], shelves: [], alarms: [], errors: "" };
+            
+            try {
+                Nimble.setParams(JSON.parse(value));
+                Nimble.login();
+            
+                var detailEndpoints = ['arrays', 'controllers', 'pools', 'shelves'];
+                for (var i = 0; i < detailEndpoints.length; i++) {
+                    try {
+                        data[detailEndpoints[i]] = Nimble.requestDetail(detailEndpoints[i]);
+                    } catch (err) {
+                        Nimble.errors.push(detailEndpoints[i] + ': ' + err);
+                    }
+                }
+            
+                var listEndpoints = ['volumes', 'disks', 'network_interfaces', 'alarms'];
+                for (var j = 0; j < listEndpoints.length; j++) {
+                    try {
+                        data[listEndpoints[j]] = Nimble.requestDetail(listEndpoints[j]);
+                    } catch (err) {
+                        Nimble.errors.push(listEndpoints[j] + ': ' + err);
+                    }
+                }
+            
+                data.errors = Nimble.errors.join(' | ');
+            } catch (e) {
+                data.errors = "CRITICAL: " + e.toString();
+            } finally {
+                Nimble.logout();
+            }
+            
+            return JSON.stringify(data);
+          timeout: '{$HPE.NIMBLE.DATA.TIMEOUT}'
+          parameters:
+            - name: base_url
+              value: '{$HPE.NIMBLE.API.SCHEME}://{$HPE.NIMBLE.API.HOST}:{$HPE.NIMBLE.API.PORT}'
+            - name: password
+              value: '{$HPE.NIMBLE.API.PASSWORD}'
+            - name: username
+              value: '{$HPE.NIMBLE.API.USERNAME}'
+          tags:
+            - tag: component
+              value: raw
+        - uuid: f65e6bd877fe4e9e910ca2fd392fcf46
+          name: 'Nimble: API errors'
+          type: DEPENDENT
+          key: nimble.get.errors
+          delay: '0'
+          history: 7d
+          value_type: CHAR
+          trends: '0'
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.errors
+            - type: DISCARD_UNCHANGED_HEARTBEAT
+              parameters:
+                - 1h
+          master_item:
+            key: nimble.get.data
+          tags:
+            - tag: component
+              value: health
+          triggers:
+            - uuid: e2c19d8dd9494c74bb4340aa3ee53d32
+              expression: 'length(last(/HPE Nimble Storage by HTTP/nimble.get.errors))>0'
+              name: 'Nimble: Errors in API requests'
+              opdata: '{ITEM.LASTVALUE1}'
+              priority: AVERAGE
+              tags:
+                - tag: scope
+                  value: availability
+      discovery_rules:
+        - uuid: 4e3333ced4c348bb96b6f713d85e6b6d
+          name: 'Active alarm discovery'
+          type: DEPENDENT
+          key: nimble.alarm.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: 335c02cddd104e548ae9a5305ec50bdf
+              name: 'Alarm {#ALARM_TYPE}: Severity'
+              type: DEPENDENT
+              key: 'nimble.alarm.severity[{#ALARM_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.alarms[?(@.id == ''{#ALARM_ID}'')].severity.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: alarm
+              trigger_prototypes:
+                - uuid: cd863c3b39ad43aca9135cbdc3c6dd83
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.alarm.severity[{#ALARM_ID}])="critical"'
+                  name: 'Alarm {#ALARM_TYPE}: Critical'
+                  opdata: 'Severity: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 935accfe5ae84c839e54e774630dd035
+              name: 'Alarm {#ALARM_TYPE}: Status'
+              type: DEPENDENT
+              key: 'nimble.alarm.status[{#ALARM_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.alarms[?(@.id == ''{#ALARM_ID}'')].status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: alarm
+          master_item:
+            key: nimble.get.data
+          lld_macro_paths:
+            - lld_macro: '{#ALARM_ID}'
+              path: $.id
+            - lld_macro: '{#ALARM_TYPE}'
+              path: $.type_name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.alarms
+        - uuid: 5deb72e26d414cd2b9983e2621484863
+          name: 'Controller discovery'
+          type: DEPENDENT
+          key: nimble.ctrl.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: c9950e5e14614bd38f7e33102cb80b44
+              name: 'Controller {#CTRL_NAME}: Fan Status'
+              type: DEPENDENT
+              key: 'nimble.ctrl.fan[{#CTRL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.controllers[?(@.id == ''{#CTRL_ID}'')].fan_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: controller
+                - tag: controller
+                  value: '{#CTRL_NAME}'
+              trigger_prototypes:
+                - uuid: 0dcfd27d24d043e4a80f3487acd97b9d
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.ctrl.fan[{#CTRL_ID}])<>"fan_okay"'
+                  name: 'Controller {#CTRL_NAME}: Fan problem'
+                  opdata: 'Fan: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: e148f53e561b48cbbd92df32d8b213df
+              name: 'Controller {#CTRL_NAME}: Hostname'
+              type: DEPENDENT
+              key: 'nimble.ctrl.hostname[{#CTRL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.controllers[?(@.id == ''{#CTRL_ID}'')].hostname.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: controller
+                - tag: controller
+                  value: '{#CTRL_NAME}'
+            - uuid: c1e27fae3d2d4cb4bfb52e2244865e55
+              name: 'Controller {#CTRL_NAME}: Partition Status'
+              type: DEPENDENT
+              key: 'nimble.ctrl.partition[{#CTRL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.controllers[?(@.id == ''{#CTRL_ID}'')].partition_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: controller
+                - tag: controller
+                  value: '{#CTRL_NAME}'
+            - uuid: b3ca7035c0d64fd4930cf1393bcc6721
+              name: 'Controller {#CTRL_NAME}: Power Status'
+              type: DEPENDENT
+              key: 'nimble.ctrl.power[{#CTRL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.controllers[?(@.id == ''{#CTRL_ID}'')].power_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: controller
+                - tag: controller
+                  value: '{#CTRL_NAME}'
+              trigger_prototypes:
+                - uuid: 82996f5c10ec48218901786b7d95f3ca
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.ctrl.power[{#CTRL_ID}])<>"ps_okay"'
+                  name: 'Controller {#CTRL_NAME}: Power problem'
+                  opdata: 'Power: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 79b78c2394e84b1b938a225071071a10
+              name: 'Controller {#CTRL_NAME}: Serial'
+              type: DEPENDENT
+              key: 'nimble.ctrl.serial[{#CTRL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.controllers[?(@.id == ''{#CTRL_ID}'')].serial.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 6h
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: controller
+                - tag: controller
+                  value: '{#CTRL_NAME}'
+            - uuid: f6fd91a1e5864e4e893b5c8cfebcf511
+              name: 'Controller {#CTRL_NAME}: State'
+              type: DEPENDENT
+              key: 'nimble.ctrl.state[{#CTRL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.controllers[?(@.id == ''{#CTRL_ID}'')].state.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: controller
+                - tag: controller
+                  value: '{#CTRL_NAME}'
+              trigger_prototypes:
+                - uuid: ae0caaafe6b04d7a9c1b82653dc437b4
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.ctrl.state[{#CTRL_ID}])<>"active" and last(/HPE Nimble Storage by HTTP/nimble.ctrl.state[{#CTRL_ID}])<>"standby"'
+                  name: 'Controller {#CTRL_NAME}: State is abnormal'
+                  opdata: 'State: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 7e3d72f73bc943a0a54beaaed1d76309
+              name: 'Controller {#CTRL_NAME}: Temperature Status'
+              type: DEPENDENT
+              key: 'nimble.ctrl.temp[{#CTRL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.controllers[?(@.id == ''{#CTRL_ID}'')].temperature_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: controller
+                - tag: controller
+                  value: '{#CTRL_NAME}'
+              trigger_prototypes:
+                - uuid: a54c5d55787345f38b25c6ee1fe65037
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.ctrl.temp[{#CTRL_ID}])<>"temperature_okay"'
+                  name: 'Controller {#CTRL_NAME}: Temperature problem'
+                  opdata: 'Temp: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: nimble.get.data
+          lld_macro_paths:
+            - lld_macro: '{#CTRL_ID}'
+              path: $.id
+            - lld_macro: '{#CTRL_NAME}'
+              path: $.name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.controllers
+        - uuid: 7b398cd3c57a4c5e8f02a1dee39b26f6
+          name: 'Disk discovery'
+          type: DEPENDENT
+          key: nimble.disk.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: a1f1b431743f46d59d45424b0cf5a8fd
+              name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: Firmware'
+              type: DEPENDENT
+              key: 'nimble.disk.fw[{#DISK_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.disks[?(@.id == ''{#DISK_ID}'')].firmware_version.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: disk
+                - tag: disk
+                  value: '{#DISK_SERIAL}'
+            - uuid: 0506dd342b0c40b8a45a7988689430e3
+              name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: Model'
+              type: DEPENDENT
+              key: 'nimble.disk.model[{#DISK_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.disks[?(@.id == ''{#DISK_ID}'')].model.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: disk
+                - tag: disk
+                  value: '{#DISK_SERIAL}'
+            - uuid: fffb409ba6f74d1c8c817f86d7a1b9c3
+              name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: RAID State'
+              type: DEPENDENT
+              key: 'nimble.disk.raid[{#DISK_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.disks[?(@.id == ''{#DISK_ID}'')].raid_state.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: disk
+                - tag: disk
+                  value: '{#DISK_SERIAL}'
+            - uuid: 1061a6de62d148508804144357dccf3b
+              name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: Size'
+              type: DEPENDENT
+              key: 'nimble.disk.size[{#DISK_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.disks[?(@.id == ''{#DISK_ID}'')].size.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: disk
+                - tag: disk
+                  value: '{#DISK_SERIAL}'
+            - uuid: edece48c6c1244838a02f6ff527c5f8c
+              name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: State'
+              type: DEPENDENT
+              key: 'nimble.disk.state[{#DISK_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.disks[?(@.id == ''{#DISK_ID}'')].state.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: disk
+                - tag: disk
+                  value: '{#DISK_SERIAL}'
+              trigger_prototypes:
+                - uuid: 05b6d0214f1545139ca29de67e0c3e6f
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.disk.state[{#DISK_ID}])<>"in use" and last(/HPE Nimble Storage by HTTP/nimble.disk.state[{#DISK_ID}])<>"valid"'
+                  name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: State is abnormal'
+                  opdata: 'State: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 9db3ca13c7ab40ea8d32f488185678f4
+              name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: Type'
+              type: DEPENDENT
+              key: 'nimble.disk.type[{#DISK_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.disks[?(@.id == ''{#DISK_ID}'')].type.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: disk
+                - tag: disk
+                  value: '{#DISK_SERIAL}'
+            - uuid: 56c38f1887f3424ca833a7769ac3ba2c
+              name: 'Disk [{#DISK_SHELF} Slot {#DISK_SLOT}]: Vendor'
+              type: DEPENDENT
+              key: 'nimble.disk.vendor[{#DISK_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.disks[?(@.id == ''{#DISK_ID}'')].vendor.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: disk
+                - tag: disk
+                  value: '{#DISK_SERIAL}'
+          master_item:
+            key: nimble.get.data
+          lld_macro_paths:
+            - lld_macro: '{#DISK_ID}'
+              path: $.id
+            - lld_macro: '{#DISK_SERIAL}'
+              path: $.serial
+            - lld_macro: '{#DISK_SHELF}'
+              path: $.shelf_location
+            - lld_macro: '{#DISK_SLOT}'
+              path: $.slot
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.disks
+        - uuid: af3349f3f6b0467d80125f78d9a5f864
+          name: 'Network interface discovery'
+          type: DEPENDENT
+          key: nimble.nic.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: b8b219bc817146c2a9245678f1991129
+              name: 'NIC {#NIC_NAME} ({#NIC_CTRL}): MAC Address'
+              type: DEPENDENT
+              key: 'nimble.nic.mac[{#NIC_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.network_interfaces[?(@.id == ''{#NIC_ID}'')].mac.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#NIC_NAME}'
+            - uuid: 0429fcbc1f474206aff9d7e7f9a5f94d
+              name: 'NIC {#NIC_NAME} ({#NIC_CTRL}): Max Speed'
+              type: DEPENDENT
+              key: 'nimble.nic.maxspeed[{#NIC_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.network_interfaces[?(@.id == ''{#NIC_ID}'')].max_link_speed.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#NIC_NAME}'
+            - uuid: 1b13b3960fd541408518f21d225b114a
+              name: 'NIC {#NIC_NAME} ({#NIC_CTRL}): MTU'
+              type: DEPENDENT
+              key: 'nimble.nic.mtu[{#NIC_ID}]'
+              delay: '0'
+              history: 7d
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.network_interfaces[?(@.id == ''{#NIC_ID}'')].mtu.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#NIC_NAME}'
+            - uuid: 0c5ce8267f464a0ab223c32d93cbaa65
+              name: 'NIC {#NIC_NAME} ({#NIC_CTRL}): Link Speed'
+              type: DEPENDENT
+              key: 'nimble.nic.speed[{#NIC_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.network_interfaces[?(@.id == ''{#NIC_ID}'')].link_speed.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#NIC_NAME}'
+            - uuid: 6a31c7b340524a9e9221d2e3346107f5
+              name: 'NIC {#NIC_NAME} ({#NIC_CTRL}): Link Status'
+              type: DEPENDENT
+              key: 'nimble.nic.status[{#NIC_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.network_interfaces[?(@.id == ''{#NIC_ID}'')].link_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#NIC_NAME}'
+              trigger_prototypes:
+                - uuid: 04c7a0207a82417e88a63519ad37df01
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.nic.status[{#NIC_ID}])<>"link_status_up"'
+                  name: 'NIC {#NIC_NAME} ({#NIC_CTRL}): Link is Down'
+                  opdata: 'Status: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 86ba8c414e674334924282e33e96c660
+              name: 'NIC {#NIC_NAME} ({#NIC_CTRL}): NIC Type'
+              type: DEPENDENT
+              key: 'nimble.nic.type[{#NIC_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.network_interfaces[?(@.id == ''{#NIC_ID}'')].nic_type.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: network
+                - tag: interface
+                  value: '{#NIC_NAME}'
+          master_item:
+            key: nimble.get.data
+          lld_macro_paths:
+            - lld_macro: '{#NIC_CTRL}'
+              path: $.controller_name
+            - lld_macro: '{#NIC_ID}'
+              path: $.id
+            - lld_macro: '{#NIC_NAME}'
+              path: $.name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.network_interfaces
+        - uuid: 32cb9d1b06214aed9977b5d97f0c09a9
+          name: 'Pool discovery'
+          type: DEPENDENT
+          key: nimble.pool.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: 9b8152582e364ef3835cc9641f52363c
+              name: 'Pool {#POOL_NAME}: Capacity'
+              type: DEPENDENT
+              key: 'nimble.pool.capacity[{#POOL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.id == ''{#POOL_ID}'')].capacity.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: pool
+                - tag: pool
+                  value: '{#POOL_NAME}'
+            - uuid: 228a80c0935940afa400d8eb57308eec
+              name: 'Pool {#POOL_NAME}: Savings Ratio'
+              type: DEPENDENT
+              key: 'nimble.pool.savings[{#POOL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.id == ''{#POOL_ID}'')].savings_ratio.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: pool
+                - tag: pool
+                  value: '{#POOL_NAME}'
+            - uuid: f82a98711bb54318b9917fb1800a5d09
+              name: 'Pool {#POOL_NAME}: Usage'
+              type: DEPENDENT
+              key: 'nimble.pool.usage[{#POOL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.pools[?(@.id == ''{#POOL_ID}'')].usage.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: pool
+                - tag: pool
+                  value: '{#POOL_NAME}'
+          master_item:
+            key: nimble.get.data
+          lld_macro_paths:
+            - lld_macro: '{#POOL_ID}'
+              path: $.id
+            - lld_macro: '{#POOL_NAME}'
+              path: $.name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.pools
+        - uuid: 7efc34d6363c420ab7cd7d9a3131478d
+          name: 'Shelf discovery'
+          type: DEPENDENT
+          key: nimble.shelf.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: a4eca1ad3afb48ce96e892a3926c0f5e
+              name: 'Shelf {#SHELF_SERIAL}: Chassis Type'
+              type: DEPENDENT
+              key: 'nimble.shelf.chassis_type[{#SHELF_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.shelves[?(@.id == ''{#SHELF_ID}'')].chassis_type.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: shelf
+            - uuid: 13eff4ec94f54764908fdbea0c267176
+              name: 'Shelf {#SHELF_SERIAL}: Fan Status'
+              type: DEPENDENT
+              key: 'nimble.shelf.fan[{#SHELF_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.shelves[?(@.id == ''{#SHELF_ID}'')].fan_overall_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: shelf
+              trigger_prototypes:
+                - uuid: 83e3696a957444fabc6536041aa6cb5e
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.shelf.fan[{#SHELF_ID}])<>"OK"'
+                  name: 'Shelf {#SHELF_SERIAL}: Fan problem'
+                  opdata: 'Fan: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: ab6e53d8cf5c4ac2b3ca71c2a6b4ba7e
+              name: 'Shelf {#SHELF_SERIAL}: Model'
+              type: DEPENDENT
+              key: 'nimble.shelf.model[{#SHELF_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.shelves[?(@.id == ''{#SHELF_ID}'')].model.first()'
+                - type: DISCARD_UNCHANGED_HEARTBEAT
+                  parameters:
+                    - 1d
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: shelf
+            - uuid: 8e2949f5a3e347ce983b19006257a762
+              name: 'Shelf {#SHELF_SERIAL}: PSU Status'
+              type: DEPENDENT
+              key: 'nimble.shelf.psu[{#SHELF_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.shelves[?(@.id == ''{#SHELF_ID}'')].psu_overall_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: shelf
+              trigger_prototypes:
+                - uuid: e02465c9de3a458b873cb65e6a48c02a
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.shelf.psu[{#SHELF_ID}])<>"OK"'
+                  name: 'Shelf {#SHELF_SERIAL}: PSU problem'
+                  opdata: 'PSU: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 48bae3396fd24c0ca9022af3125633df
+              name: 'Shelf {#SHELF_SERIAL}: Temperature Status'
+              type: DEPENDENT
+              key: 'nimble.shelf.temp[{#SHELF_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.shelves[?(@.id == ''{#SHELF_ID}'')].temp_overall_status.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: shelf
+              trigger_prototypes:
+                - uuid: b279b5a3d44d45efa2662f8e00ef75b0
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.shelf.temp[{#SHELF_ID}])<>"OK"'
+                  name: 'Shelf {#SHELF_SERIAL}: Temperature problem'
+                  opdata: 'Temp: {ITEM.LASTVALUE1}'
+                  priority: AVERAGE
+                  tags:
+                    - tag: scope
+                      value: availability
+          master_item:
+            key: nimble.get.data
+          lld_macro_paths:
+            - lld_macro: '{#SHELF_ID}'
+              path: $.id
+            - lld_macro: '{#SHELF_MODEL}'
+              path: $.model
+            - lld_macro: '{#SHELF_SERIAL}'
+              path: $.serial
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.shelves
+        - uuid: 47ebf4624ee24f24ac213525ef08616a
+          name: 'Volume discovery'
+          type: DEPENDENT
+          key: nimble.vol.discovery
+          delay: '0'
+          item_prototypes:
+            - uuid: 889caaf83d8f497cab54ad98985223c1
+              name: 'Volume {#VOL_NAME}: Connections'
+              type: DEPENDENT
+              key: 'nimble.vol.connections[{#VOL_ID}]'
+              delay: '0'
+              history: 7d
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.volumes[?(@.id == ''{#VOL_ID}'')].num_connections.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+            - uuid: 2c50f87eeac24ea4879070da3bc49a58
+              name: 'Volume {#VOL_NAME}: Online'
+              type: DEPENDENT
+              key: 'nimble.vol.online[{#VOL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: CHAR
+              trends: '0'
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.volumes[?(@.id == ''{#VOL_ID}'')].online.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+              trigger_prototypes:
+                - uuid: 1b1dc4e65d0441a6993988096bd32076
+                  expression: 'last(/HPE Nimble Storage by HTTP/nimble.vol.online[{#VOL_ID}])="false"'
+                  name: 'Volume {#VOL_NAME}: is Offline'
+                  opdata: 'Online: {ITEM.LASTVALUE1}'
+                  priority: HIGH
+                  tags:
+                    - tag: scope
+                      value: availability
+            - uuid: 3b9eab1f188641668e9d4a8dc84ee906
+              name: 'Volume {#VOL_NAME}: Size'
+              type: DEPENDENT
+              key: 'nimble.vol.size[{#VOL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.volumes[?(@.id == ''{#VOL_ID}'')].size.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+            - uuid: 1ec35ec664bf4485ac64950a3c8e2e38
+              name: 'Volume {#VOL_NAME}: Used'
+              type: DEPENDENT
+              key: 'nimble.vol.used[{#VOL_ID}]'
+              delay: '0'
+              history: 7d
+              value_type: FLOAT
+              units: B
+              preprocessing:
+                - type: JSONPATH
+                  parameters:
+                    - '$.volumes[?(@.id == ''{#VOL_ID}'')].vol_usage_compressed_bytes.first()'
+              master_item:
+                key: nimble.get.data
+              tags:
+                - tag: component
+                  value: volume
+                - tag: volume
+                  value: '{#VOL_NAME}'
+          master_item:
+            key: nimble.get.data
+          lld_macro_paths:
+            - lld_macro: '{#VOL_ID}'
+              path: $.id
+            - lld_macro: '{#VOL_NAME}'
+              path: $.name
+          preprocessing:
+            - type: JSONPATH
+              parameters:
+                - $.volumes
+      tags:
+        - tag: class
+          value: storage
+        - tag: target
+          value: hpe
+        - tag: target
+          value: nimble
+      macros:
+        - macro: '{$HPE.NIMBLE.API.HOST}'
+          value: '{HOST.CONN}'
+          description: 'Nimble Storage management IP or hostname'
+        - macro: '{$HPE.NIMBLE.API.PASSWORD}'
+          type: SECRET_TEXT
+          description: 'API password'
+        - macro: '{$HPE.NIMBLE.API.PORT}'
+          value: '5392'
+          description: 'Nimble REST API port (default: 5392)'
+        - macro: '{$HPE.NIMBLE.API.SCHEME}'
+          value: https
+          description: 'API scheme: https (default) or http'
+        - macro: '{$HPE.NIMBLE.API.USERNAME}'
+          value: admin
+          description: 'API username'
+        - macro: '{$HPE.NIMBLE.DATA.TIMEOUT}'
+          value: 60s
+          description: 'Script item timeout'
+        - macro: '{$HPE.NIMBLE.SPACE.WARN}'
+          value: '90'
+          description: 'Array space utilization warning threshold (%)'
