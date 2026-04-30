@@ -1,0 +1,283 @@
+zabbix_export:
+  version: '7.4'
+  template_groups:
+    - uuid: a571c0d144b14fd4a87a9d9b2aa9fcd6
+      name: Templates/Operating Systems
+  templates:
+    - uuid: 51a7bc2a93b04ae8bba2d8dfb4c1c90b
+      template: 'Windows - Certificates Registry'
+      name: 'Windows - Certificates Registry'
+      description: |
+        Monitors Windows certificates via the registry without any external script.
+
+        Single LLD rule in values mode (default registry.get):
+          - Returns all registry values under SystemCertificates recursively
+          - JS filters entries whose fullkey ends with \{store}\Certificates\{thumbprint}\Blob
+          - Extracts {#CERT_STORE}, {#CERT_THUMBPRINT} and {#CERT_CN} (Subject CN from DER) in one pass
+          - Items use {#CERT_CN} in their name for human-readable display
+
+        Items per certificate:
+          - Blob          : master item ZABBIX_ACTIVE (REG_BINARY base64, not stored)
+          - Expiry date   : DEPENDENT, extracts NotAfter (unixtime)
+          - Days remaining: CALCULATED
+
+        Mode: active agent (ZABBIX_ACTIVE).
+
+        Configurable macros:
+          {$CERT.STORES}          : regex of stores to monitor (default: ^MY$)
+          {$CERT.EXPIRY.WARN}     : WARNING threshold in days (default: 30)
+          {$CERT.EXPIRY.HIGH}     : HIGH threshold in days (default: 15)
+          {$CERT.EXPIRY.DISASTER} : DISASTER threshold in days (default: 7)
+      groups:
+        - name: Templates/Operating Systems
+      macros:
+        - macro: '{$CERT.STORES}'
+          value: '^MY$'
+          description: 'Regex of stores to monitor. Default: ^MY$ (machine Personal store). Ex: ^(MY|ROOT|CA)$ for multiple stores.'
+        - macro: '{$CERT.EXPIRY.WARN}'
+          value: '30'
+          description: 'WARNING threshold: days before expiration'
+        - macro: '{$CERT.EXPIRY.HIGH}'
+          value: '15'
+          description: 'HIGH threshold: days before expiration'
+        - macro: '{$CERT.EXPIRY.DISASTER}'
+          value: '7'
+          description: 'DISASTER threshold: days before expiration'
+      tags:
+        - tag: component
+          value: certificates
+        - tag: target
+          value: windows
+
+      discovery_rules:
+
+        # ================================================================
+        # Single LLD rule - values mode (default)
+        # registry.get returns all registry values recursively
+        # JS filters "Blob" entries under \{store}\Certificates\{thumbprint}
+        # Decodes base64 inline to extract Subject CN from X.509 DER
+        # Produces {#CERT_STORE}, {#CERT_THUMBPRINT}, {#CERT_CN}
+        # ================================================================
+        - uuid: 73a50bca3a6649dc9659de7673cffe53
+          name: 'Certificate discovery'
+          type: ZABBIX_ACTIVE
+          key: 'registry.get["HKLM\SOFTWARE\Microsoft\SystemCertificates",values]'
+          delay: 1h
+          lifetime: 30d
+          description: |
+            Enumerates all registry values under SystemCertificates.
+            Isolates the Blob entry for each certificate, extracts the CN from the embedded DER.
+            Filters stores via {$CERT.STORES}.
+          preprocessing:
+            - type: JAVASCRIPT
+              parameters:
+                - |
+                  var data;
+                  try { data = JSON.parse(value); } catch(e) { throw 'JSON: ' + e; }
+
+                  var alpha = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+                  function b64decode(s) {
+                      s = s.replace(/[\s=]/g, '');
+                      var b = [];
+                      for (var i = 0; i < s.length; i += 4) {
+                          var n = (alpha.indexOf(s[i])   << 18) |
+                                  (alpha.indexOf(s[i+1]) << 12) |
+                                  ((s[i+2] ? alpha.indexOf(s[i+2]) : 0) << 6) |
+                                   (s[i+3] ? alpha.indexOf(s[i+3]) : 0);
+                          b.push((n >> 16) & 0xFF);
+                          if (s[i+2]) b.push((n >> 8) & 0xFF);
+                          if (s[i+3]) b.push(n & 0xFF);
+                      }
+                      return b;
+                  }
+
+                  function rlen(d, p) {
+                      if (d[p] < 0x80) return { l: d[p], n: p + 1 };
+                      var c = d[p] & 0x7F, v = 0;
+                      for (var i = 1; i <= c; i++) v = (v << 8) | d[p + i];
+                      return { l: v, n: p + 1 + c };
+                  }
+
+                  function skip(d, p) { p++; var r = rlen(d, p); return r.n + r.l; }
+
+                  function extractCN(b64) {
+                      try {
+                          var b = b64decode(b64);
+                          var off = 0, certDer = null;
+                          while (off + 12 <= b.length) {
+                              var pid  = b[off]|(b[off+1]<<8)|(b[off+2]<<16)|(b[off+3]<<24);
+                              var size = b[off+8]|(b[off+9]<<8)|(b[off+10]<<16)|(b[off+11]<<24);
+                              off += 12;
+                              if (pid === 32) { certDer = b.slice(off, off + size); break; }
+                              if (size <= 0 || size > b.length) break;
+                              off += size;
+                          }
+                          if (!certDer) return null;
+                          var p = 0, r;
+                          p++; r = rlen(certDer, p); p = r.n;
+                          p++; r = rlen(certDer, p); p = r.n;
+                          if (certDer[p] === 0xA0) p = skip(certDer, p);
+                          p = skip(certDer, p);
+                          p = skip(certDer, p);
+                          p = skip(certDer, p);
+                          p = skip(certDer, p);
+                          var subStart = p;
+                          p++; r = rlen(certDer, p); var subEnd = r.n + r.l;
+                          for (var i = subStart; i < subEnd - 2; i++) {
+                              if (certDer[i]===0x55 && certDer[i+1]===0x04 && certDer[i+2]===0x03) {
+                                  var vp = i + 3, vtag = certDer[vp]; vp++;
+                                  var vr = rlen(certDer, vp);
+                                  var cn = '';
+                                  for (var j = 0; j < vr.l; j++) {
+                                      var ch = certDer[vr.n + j];
+                                      if (vtag === 0x1E) { if (j % 2 === 1) cn += String.fromCharCode(ch); }
+                                      else cn += String.fromCharCode(ch);
+                                  }
+                                  return cn;
+                              }
+                          }
+                      } catch(e) {}
+                      return null;
+                  }
+
+                  var res = [];
+                  var reBlob = /\\([A-Za-z0-9_-]+)\\Certificates\\([0-9A-Fa-f]{40})$/i;
+
+                  for (var i = 0; i < data.length; i++) {
+                      var entry = data[i];
+                      var fk   = entry.fullkey || '';
+                      var name = entry.name || '';
+                      if (name.toLowerCase() !== 'blob') continue;
+                      var m = reBlob.exec(fk);
+                      if (!m) continue;
+                      var store      = m[1];
+                      var thumbprint = m[2].toUpperCase();
+                      var blobData   = entry.data || '';
+                      var cn = extractCN(blobData) || thumbprint;
+                      res.push({ store: store, thumbprint: thumbprint, cn: cn });
+                  }
+                  return JSON.stringify(res);
+          lld_macro_paths:
+            - lld_macro: '{#CERT_STORE}'
+              path: '$.store'
+            - lld_macro: '{#CERT_THUMBPRINT}'
+              path: '$.thumbprint'
+            - lld_macro: '{#CERT_CN}'
+              path: '$.cn'
+          filter:
+            conditions:
+              - macro: '{#CERT_STORE}'
+                value: '{$CERT.STORES}'
+                operator: MATCHES_REGEX
+                formulaid: A
+
+          item_prototypes:
+
+            # ----------------------------------------------------------
+            # Master item: REG_BINARY blob encoded in base64
+            # ----------------------------------------------------------
+            - uuid: 9ec9cdb5cc2c45a88fda0886a7ec22a9
+              name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Blob'
+              type: ZABBIX_ACTIVE
+              key: 'registry.data["HKLM\SOFTWARE\Microsoft\SystemCertificates\{#CERT_STORE}\Certificates\{#CERT_THUMBPRINT}","Blob"]'
+              value_type: TEXT
+              delay: 6h
+              history: '0'
+              trends: '0'
+              description: 'REG_BINARY blob encoded in base64. Master item for dependent items.'
+              tags:
+                - tag: component
+                  value: certificates
+
+            # ----------------------------------------------------------
+            # Dependent item: expiry date as Unix timestamp
+            # ----------------------------------------------------------
+            - uuid: 6d7bece1de2a4962b57a4617e28b1901
+              name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Expiry date'
+              type: DEPENDENT
+              key: 'cert.expiry[{#CERT_STORE},{#CERT_THUMBPRINT}]'
+              master_item:
+                key: 'registry.data["HKLM\SOFTWARE\Microsoft\SystemCertificates\{#CERT_STORE}\Certificates\{#CERT_THUMBPRINT}","Blob"]'
+              value_type: UNSIGNED
+              units: unixtime
+              delay: '0'
+              history: 90d
+              trends: 365d
+              description: 'Unix timestamp of the NotAfter date extracted from the X.509 DER embedded in the Windows blob.'
+              preprocessing:
+                - type: JAVASCRIPT
+                  parameters:
+                    - "var raw=value.replace(/[\\s=]/g,'');\nvar alpha='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';\nvar b=[];\nfor(var i=0;i<raw.length;i+=4){\n    var n=(alpha.indexOf(raw[i])<<18)|(alpha.indexOf(raw[i+1])<<12)|((raw[i+2]?alpha.indexOf(raw[i+2]):0)<<6)|(raw[i+3]?alpha.indexOf(raw[i+3]):0);\n    b.push((n>>16)&0xFF);\n    if(raw[i+2])b.push((n>>8)&0xFF);\n    if(raw[i+3])b.push(n&0xFF);\n}\nvar off=0,certDer=null;\nwhile(off+12<=b.length){\n    var pid=b[off]|(b[off+1]<<8)|(b[off+2]<<16)|(b[off+3]<<24);\n    var size=b[off+8]|(b[off+9]<<8)|(b[off+10]<<16)|(b[off+11]<<24);\n    off+=12;\n    if(pid===32){certDer=b.slice(off,off+size);break;}\n    if(size<=0||size>b.length)break;\n    off+=size;\n}\nif(!certDer)throw 'CERT_CERT_PROP_ID(32) not found';\nfunction rlen(d,p){if(d[p]<0x80)return{l:d[p],n:p+1};var c=d[p]&0x7F,v=0;for(var i=1;i<=c;i++)v=(v<<8)|d[p+i];return{l:v,n:p+1+c};}\nfunction skip(d,p){p++;var r=rlen(d,p);return r.n+r.l;}\nfunction pdate(d,p,l){var s='';for(var i=0;i<l;i++)s+=String.fromCharCode(d[p+i]);var y,mo,dy,h,mn,sc;if(l===13){y=parseInt(s.substr(0,2));y+=(y>=50)?1900:2000;mo=parseInt(s.substr(2,2))-1;dy=parseInt(s.substr(4,2));h=parseInt(s.substr(6,2));mn=parseInt(s.substr(8,2));sc=parseInt(s.substr(10,2));}else{y=parseInt(s.substr(0,4));mo=parseInt(s.substr(4,2))-1;dy=parseInt(s.substr(6,2));h=parseInt(s.substr(8,2));mn=parseInt(s.substr(10,2));sc=parseInt(s.substr(12,2));}return Math.floor(Date.UTC(y,mo,dy,h,mn,sc)/1000);}\nvar p=0,r;\nif(certDer[p]!==0x30)throw 'Certificate SEQUENCE expected';\np++;r=rlen(certDer,p);p=r.n;\nif(certDer[p]!==0x30)throw 'TBSCertificate SEQUENCE expected';\np++;r=rlen(certDer,p);p=r.n;\nif(certDer[p]===0xA0)p=skip(certDer,p);\nif(certDer[p]!==0x02)throw 'serialNumber expected';\np=skip(certDer,p);\nif(certDer[p]!==0x30)throw 'signature AlgId expected';\np=skip(certDer,p);\nif(certDer[p]!==0x30)throw 'issuer expected';\np=skip(certDer,p);\nif(certDer[p]!==0x30)throw 'validity expected';\np++;r=rlen(certDer,p);p=r.n;\np++;r=rlen(certDer,p);p=r.n+r.l;\np++;r=rlen(certDer,p);\nreturn String(pdate(certDer,r.n,r.l));\n"
+              tags:
+                - tag: component
+                  value: certificates
+
+            # ----------------------------------------------------------
+            # Calculated item: days before expiration
+            # ----------------------------------------------------------
+            - uuid: ae38e789afb14f86ab8779463752d094
+              name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Days until expiration'
+              type: CALCULATED
+              key: 'cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]'
+              value_type: FLOAT
+              units: days
+              delay: 6h
+              history: 90d
+              trends: 365d
+              params: '(last(//cert.expiry[{#CERT_STORE},{#CERT_THUMBPRINT}]) - now()) / 86400'
+              description: 'Days remaining before expiration. Negative if the certificate has expired.'
+              tags:
+                - tag: component
+                  value: certificates
+
+          trigger_prototypes:
+
+            - uuid: 20db3e46af024f4790f80c79773343b6
+              name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Certificate expired'
+              expression: 'last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) < 0'
+              priority: DISASTER
+              manual_close: 'YES'
+              description: 'The certificate has passed its expiration date. Renew immediately.'
+              tags:
+                - tag: scope
+                  value: security
+
+            - uuid: 8cf2c8d16744418281f18c4cd4b092a2
+              name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Expires in less than {$CERT.EXPIRY.DISASTER} days'
+              expression: 'last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) >= 0 and last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) < {$CERT.EXPIRY.DISASTER}'
+              priority: DISASTER
+              manual_close: 'YES'
+              description: 'Imminent expiration. Renew urgently.'
+              dependencies:
+                - name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Certificate expired'
+                  expression: 'last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) < 0'
+              tags:
+                - tag: scope
+                  value: security
+
+            - uuid: e2914cb99ccf4aef96665a23a17674ab
+              name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Expires in less than {$CERT.EXPIRY.HIGH} days'
+              expression: 'last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) >= {$CERT.EXPIRY.DISASTER} and last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) < {$CERT.EXPIRY.HIGH}'
+              priority: HIGH
+              manual_close: 'YES'
+              description: 'Schedule renewal soon.'
+              dependencies:
+                - name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Expires in less than {$CERT.EXPIRY.DISASTER} days'
+                  expression: 'last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) >= 0 and last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) < {$CERT.EXPIRY.DISASTER}'
+              tags:
+                - tag: scope
+                  value: security
+
+            - uuid: 3e4c4e8df41543c5a2d7cbcf8c293212
+              name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Expires in less than {$CERT.EXPIRY.WARN} days'
+              expression: 'last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) >= {$CERT.EXPIRY.HIGH} and last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) < {$CERT.EXPIRY.WARN}'
+              priority: WARNING
+              manual_close: 'YES'
+              description: 'Schedule renewal.'
+              dependencies:
+                - name: 'Cert [{#CERT_STORE}/{#CERT_CN}] - Expires in less than {$CERT.EXPIRY.HIGH} days'
+                  expression: 'last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) >= {$CERT.EXPIRY.DISASTER} and last(/Windows - Certificates Registry/cert.days[{#CERT_STORE},{#CERT_THUMBPRINT}]) < {$CERT.EXPIRY.HIGH}'
+              tags:
+                - tag: scope
+                  value: security
